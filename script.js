@@ -83,6 +83,8 @@ const session = {
     availability: "",
     seeking: "",
     newToFitness: false,
+    /** Max search radius (miles), 1–20 from preferences slider */
+    maxDistanceMiles: 10,
   },
   activePartner: null,
   workoutsThisWeek: 2,
@@ -153,6 +155,23 @@ function buildBio() {
   return `${pick(BIO_OPEN)} ${pick(BIO_MID)} ${pick(BIO_CLOSE)}`;
 }
 
+/** Random distance in miles, between 0.5 and cap (cap max 20). */
+function randomDistanceWithinCap(maxMi) {
+  const cap = Math.max(1, Math.min(20, Number(maxMi) || 20));
+  const lo = 0.5;
+  const hi = cap;
+  const v = lo + Math.random() * (hi - lo);
+  return Math.round(v * 10) / 10;
+}
+
+/** Human-readable “X mi away” for UI. */
+function formatMilesAway(miles) {
+  if (miles == null || Number.isNaN(Number(miles))) return "— mi away";
+  const m = Number(miles);
+  const shown = Number.isInteger(m) ? String(m) : m.toFixed(1);
+  return `${shown} mi away`;
+}
+
 /**
  * New random person respecting “who you want to pair with.”
  * Every call returns a unique id so history never collides.
@@ -184,6 +203,7 @@ function generateProfile() {
     workoutType: pick(WORKOUT_KEYS),
     availability: pick(AVAIL_KEYS),
     bio: buildBio(),
+    distanceMiles: randomDistanceWithinCap(session.user.maxDistanceMiles),
   };
 }
 
@@ -316,6 +336,8 @@ function fillSwipeCardEl(profile) {
   const tags = `${displayExperience(profile.experience)} · ${displayAvailability(profile.availability)} · ${displayWorkoutLabel(profile.workoutType)}`;
   document.getElementById("swipe-card-tags").textContent = tags;
   document.getElementById("swipe-card-bio").textContent = profile.bio;
+  const distEl = document.getElementById("swipe-card-distance");
+  if (distEl) distEl.textContent = formatMilesAway(profile.distanceMiles);
 }
 
 function setSwipeStamps(dx) {
@@ -467,10 +489,14 @@ function renderDmList() {
     timeEl.textContent = thread.time;
     top.appendChild(nameEl);
     top.appendChild(timeEl);
+    const dist = document.createElement("p");
+    dist.className = "dm-row__distance";
+    dist.textContent = formatMilesAway(thread.profile.distanceMiles);
     const prev = document.createElement("p");
     prev.className = "dm-row__preview";
     prev.textContent = thread.lastMessage;
     body.appendChild(top);
+    body.appendChild(dist);
     body.appendChild(prev);
     li.appendChild(av);
     li.appendChild(body);
@@ -547,6 +573,9 @@ function readFormIntoSession() {
   session.user.availability = document.getElementById("availability").value;
   session.user.seeking = document.getElementById("seeking").value;
   session.user.newToFitness = document.getElementById("new-to-fitnessToggle").checked;
+  const distEl = document.getElementById("max-distance");
+  const raw = distEl ? parseInt(distEl.value, 10) : 10;
+  session.user.maxDistanceMiles = Math.max(1, Math.min(20, Number.isFinite(raw) ? raw : 10));
 }
 
 // -----------------------------------------------------------------------------
@@ -637,6 +666,8 @@ function updateChatHeader() {
   if (!p) return;
   document.getElementById("chat-partner-name").textContent = p.displayName;
   document.getElementById("chat-partner-initials").textContent = p.initials;
+  const distHd = document.getElementById("chat-partner-distance");
+  if (distHd) distHd.textContent = formatMilesAway(p.distanceMiles);
 }
 
 function openChatWith(profile) {
@@ -717,6 +748,18 @@ function syncProgressUI() {
 // Event bindings
 // -----------------------------------------------------------------------------
 function bindEvents() {
+  const distSlider = document.getElementById("max-distance");
+  const distOut = document.getElementById("distance-value");
+  function syncDistanceSliderUI() {
+    if (!distSlider || !distOut) return;
+    distOut.textContent = distSlider.value;
+    distSlider.setAttribute("aria-valuenow", distSlider.value);
+  }
+  if (distSlider) {
+    distSlider.addEventListener("input", syncDistanceSliderUI);
+    syncDistanceSliderUI();
+  }
+
   document.getElementById("btn-get-started").addEventListener("click", () => {
     showScreen("preferences");
   });
@@ -817,6 +860,7 @@ function bindEvents() {
       availability: "",
       seeking: "",
       newToFitness: false,
+      maxDistanceMiles: 10,
     };
     session.activePartner = null;
     session.swipeDeck = [];
@@ -830,6 +874,12 @@ function bindEvents() {
     session.rescheduleIndex = 0;
     els.form.reset();
     clearFieldErrors();
+    const ds = document.getElementById("max-distance");
+    const dout = document.getElementById("distance-value");
+    if (ds && dout) {
+      dout.textContent = ds.value;
+      ds.setAttribute("aria-valuenow", ds.value);
+    }
     els.nextWorkoutText.textContent =
       "Light 25-minute walk or stretch · Tomorrow 7:30 AM";
     showScreen("welcome");
