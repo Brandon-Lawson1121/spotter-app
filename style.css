@@ -348,6 +348,63 @@ body {
   font-size: 0.85em;
 }
 
+.field--slider {
+  margin-bottom: 1rem;
+}
+
+.field-slider__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.field-slider__head label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.field-slider__output {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.field--slider input[type="range"] {
+  width: 100%;
+  height: 8px;
+  margin: 0.35rem 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.field--slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-press);
+}
+
+.field--slider input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-press);
+  cursor: pointer;
+}
+
 .field-error {
   min-height: 1.1rem;
   margin: 0.25rem 0 0;
@@ -585,6 +642,13 @@ body {
 .chat-header__name {
   margin: 0;
   font-weight: 700;
+}
+
+.chat-header__distance {
+  margin: 0.1rem 0 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .chat-header__status {
@@ -902,6 +966,13 @@ body {
   font-weight: 700;
 }
 
+.swipe-card__distance {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
 .swipe-card__tags {
   margin: 0 0 0.65rem;
   font-size: 0.8rem;
@@ -1138,6 +1209,13 @@ body {
 .dm-row__name {
   font-weight: 700;
   font-size: 0.92rem;
+}
+
+.dm-row__distance {
+  margin: 0.15rem 0 0.2rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .dm-row__time {
