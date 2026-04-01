@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Spotter — Find your fitness accountability partner" />
+  <title>Spotter — Fitness Accountability</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- App shell: phone frame on larger screens -->
+  <div class="app-shell" id="app-shell">
+    <!-- Flow progress: shows step in onboarding / journey -->
+    <header class="flow-header" aria-label="Your progress in Spotter">
+      <div class="flow-header__inner">
+        <span class="flow-header__brand">Spotter</span>
+        <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-valuetext="Step 1 of 5: Welcome" id="progress-track">
+          <div class="progress-track__fill" id="progress-fill"></div>
+        </div>
+        <span class="flow-header__step" id="step-label">1 / 5</span>
+      </div>
+    </header>
+
+    <main class="screens" id="screens">
+      <!-- Screen 1: Welcome -->
+      <section class="screen screen--active" id="screen-welcome" data-step="1" aria-labelledby="welcome-heading">
+        <div class="screen__content">
+          <div class="hero-badge" aria-hidden="true">💪</div>
+          <h1 id="welcome-heading" class="hero-title">Spotter</h1>
+          <p class="hero-tagline">Find your fitness accountability partner</p>
+          <p class="hero-support">
+            Many people stop working out—not because they do not care, but because going alone is hard.
+            Spotter pairs you with someone who gets your goals and your schedule, so you can show up together.
+          </p>
+          <p class="helper-text">
+            No judgment, no pressure—just friendly support. Take it one step at a time.
+          </p>
+          <button type="button" class="btn btn--primary btn--large" id="btn-get-started">
+            Get Started
+          </button>
+          <p class="microcopy microcopy--muted">Your answers stay on this device for this visit only.</p>
+        </div>
+      </section>
+
+      <!-- Screen 2: Preferences -->
+      <section class="screen" id="screen-preferences" data-step="2" aria-labelledby="prefs-heading" hidden>
+        <div class="screen__content">
+          <h2 id="prefs-heading" class="screen-title">Tell us about you</h2>
+          <p class="screen-lead">
+            We use this to suggest a partner who fits your rhythm—not to label you. Change anything anytime.
+          </p>
+
+          <form class="prefs-form" id="prefs-form" novalidate>
+            <div class="field">
+              <label for="user-name">Your name</label>
+              <input type="text" id="user-name" name="name" autocomplete="given-name" placeholder="Alex" required minlength="2" maxlength="40" />
+              <p class="field-error" id="error-name" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="goal">Fitness goal</label>
+              <select id="goal" name="goal" required>
+                <option value="">Choose one…</option>
+                <option value="lose weight">Lose weight</option>
+                <option value="build muscle">Build muscle</option>
+                <option value="improve endurance">Improve endurance</option>
+                <option value="stay consistent">Stay consistent</option>
+              </select>
+              <p class="field-error" id="error-goal" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="experience">Experience level</label>
+              <select id="experience" name="experience" required>
+                <option value="">Choose one…</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+              <p class="field-error" id="error-experience" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="workout-type">Workout preference</label>
+              <select id="workout-type" name="workoutType" required>
+                <option value="">Choose one…</option>
+                <option value="gym">Gym</option>
+                <option value="home">Home workouts</option>
+                <option value="running">Running / Cardio</option>
+                <option value="mixed">Mixed</option>
+              </select>
+              <p class="field-error" id="error-workout" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="availability">When you usually can work out</label>
+              <select id="availability" name="availability" required>
+                <option value="">Choose one…</option>
+                <option value="mornings">Mornings</option>
+                <option value="afternoons">Afternoons</option>
+                <option value="evenings">Evenings</option>
+                <option value="flexible">Flexible</option>
+              </select>
+              <p class="field-error" id="error-availability" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="seeking">Who would you like to pair with?</label>
+              <select id="seeking" name="seeking" required>
+                <option value="">Choose one…</option>
+                <option value="male">Men</option>
+                <option value="female">Women</option>
+                <option value="both">Anyone (no preference)</option>
+              </select>
+              <p class="field-error" id="error-seeking" role="alert"></p>
+            </div>
+            <p class="helper-text helper-text--indent">
+              We only use this to suggest partners—you can always change your mind later.
+            </p>
+
+            <div class="field field--checkbox">
+              <input type="checkbox" id="new-to-fitnessToggle" name="newToFitness" />
+              <label for="new-to-fitnessToggle" class="label-inline">
+                I’m new to fitness <span class="optional">(optional)</span>
+              </label>
+            </div>
+            <p class="helper-text helper-text--indent">
+              Checking this helps us match you with patient, encouraging partners.
+            </p>
+
+            <button type="submit" class="btn btn--primary btn--large" id="btn-find-match">
+              Start discovering
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Screen 3: Main hub — Discover (swipe) + Messages tabs -->
+      <section class="screen screen--main" id="screen-main" data-step="3" aria-label="Spotter home" hidden>
+        <div class="main-panels" id="main-panels">
+          <!-- Tab: Tinder-style gym discover -->
+          <div class="main-panel main-panel--active" id="panel-swipe" role="tabpanel" aria-labelledby="tab-swipe-btn">
+            <div class="screen__content screen__content--swipe">
+              <h2 class="swipe-title">Discover partners</h2>
+              <p class="swipe-sub">
+                Swipe right if you’d like to team up, left to pass. Same vibe as dating apps—just for accountability, not romance.
+              </p>
+              <div class="swipe-stage" id="swipe-stage">
+                <div class="swipe-card" id="swipe-card" tabindex="0">
+                  <div class="swipe-card__photo" id="swipe-card-avatar" aria-hidden="true">SP</div>
+                  <div class="swipe-card__body">
+                    <p class="swipe-card__name-line">
+                      <span id="swipe-card-name">Jordan M.</span>,
+                      <span id="swipe-card-age">28</span>
+                    </p>
+                    <p class="swipe-card__tags" id="swipe-card-tags">Intermediate · Mornings · Mixed</p>
+                    <p class="swipe-card__bio" id="swipe-card-bio">Bio text</p>
+                  </div>
+                  <div class="swipe-card__labels" aria-hidden="true">
+                    <span class="swipe-card__stamp swipe-card__stamp--pass" id="swipe-stamp-pass">PASS</span>
+                    <span class="swipe-card__stamp swipe-card__stamp--connect" id="swipe-stamp-connect">CONNECT</span>
+                  </div>
+                </div>
+              </div>
+              <div class="swipe-actions">
+                <button type="button" class="btn-swipe btn-swipe--pass" id="btn-swipe-pass" aria-label="Pass on this partner">
+                  <span class="btn-swipe__glyph" aria-hidden="true">✕</span>
+                  Pass
+                </button>
+                <button type="button" class="btn-swipe btn-swipe--connect" id="btn-swipe-connect" aria-label="Connect with this partner">
+                  <span class="btn-swipe__glyph" aria-hidden="true">♥</span>
+                  Connect
+                </button>
+              </div>
+              <p class="helper-text swipe-helper" id="swipe-helper">Drag the card or use the buttons below.</p>
+              <div class="empty-state card" id="swipe-empty" hidden>
+                <p class="empty-state__title">You’re all caught up</p>
+                <p class="empty-state__text">No more people in your filters right now. Check Messages—or adjust your preferences later.</p>
+                <button type="button" class="btn btn--secondary" id="btn-swipe-reset">Shuffle new deck (demo)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: DMs list -->
+          <div class="main-panel" id="panel-messages" role="tabpanel" aria-labelledby="tab-messages-btn" hidden>
+            <div class="screen__content">
+              <h2 class="screen-title">Messages</h2>
+              <p class="screen-lead">
+                Chats with people you connected with. Everyone here wants a no-pressure gym buddy.
+              </p>
+              <ul class="dm-list" id="dm-list" aria-label="Direct messages"></ul>
+              <div class="empty-state card" id="dm-empty" hidden>
+                <p class="empty-state__title">No messages yet</p>
+                <p class="empty-state__text">Swipe right on someone in Discover to open a DM. We’ll keep this space kind and low-stress.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="tab-bar" aria-label="Main views" id="tab-bar">
+          <button type="button" class="tab-bar__btn tab-bar__btn--active" id="tab-swipe-btn" data-tab="swipe" aria-current="page">
+            <span class="tab-bar__icon" aria-hidden="true">◎</span>
+            Discover
+          </button>
+          <button type="button" class="tab-bar__btn" id="tab-messages-btn" data-tab="messages">
+            <span class="tab-bar__icon" aria-hidden="true">💬</span>
+            Messages
+            <span class="tab-bar__badge" id="tab-badge" hidden>0</span>
+          </button>
+        </nav>
+      </section>
+
+      <!-- Screen 4: Chat -->
+      <section class="screen" id="screen-chat" data-step="4" aria-labelledby="chat-heading" hidden>
+        <div class="screen__content screen__content--chat">
+          <h2 id="chat-heading" class="visually-hidden">Accountability chat</h2>
+          <div class="chat-topbar card card--compact">
+            <button type="button" class="btn-back" id="btn-chat-back" aria-label="Back to Messages">←</button>
+            <div class="chat-header chat-header--inline">
+              <div class="chat-header__avatar" id="chat-partner-initials">JM</div>
+              <div class="chat-header__info">
+                <p class="chat-header__name" id="chat-partner-name">Jordan M.</p>
+                <p class="chat-header__status"><span class="status-dot" aria-hidden="true"></span> Here to cheer you on</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-log card" id="chat-log" role="log" aria-live="polite" aria-relevant="additions">
+            <!-- Messages injected / static starters -->
+          </div>
+
+          <div class="chat-compose card card--compact">
+            <label for="chat-input" class="visually-hidden">Message your partner</label>
+            <input
+              type="text"
+              id="chat-input"
+              class="chat-compose__input"
+              placeholder="Message your partner…"
+              maxlength="500"
+              autocomplete="off"
+            />
+            <button type="button" class="btn btn--primary chat-compose__send" id="btn-chat-send">Send</button>
+          </div>
+
+          <div class="next-workout card" id="next-workout-card">
+            <p class="next-workout__label">Next check-in</p>
+            <p class="next-workout__title" id="next-workout-text">Light 25-minute walk or stretch · Tomorrow 7:30 AM</p>
+            <p class="next-workout__hint">Small plans count. We can adjust if life gets busy.</p>
+          </div>
+
+          <p class="quick-actions-label">Quick replies</p>
+          <div class="quick-actions">
+            <button type="button" class="btn btn--ghost" id="btn-worked-out">I worked out</button>
+            <button type="button" class="btn btn--ghost" id="btn-motivation">Need motivation</button>
+            <button type="button" class="btn btn--ghost" id="btn-reschedule">Reschedule</button>
+          </div>
+
+          <div class="chat-footer-nav">
+            <button type="button" class="btn btn--secondary btn--small" id="btn-to-progress">See our progress</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen 5: Progress -->
+      <section class="screen" id="screen-progress" data-step="5" aria-labelledby="progress-heading" hidden>
+        <div class="screen__content">
+          <h2 id="progress-heading" class="screen-title">Your week together</h2>
+          <p class="screen-lead">
+            Progress is personal. These numbers celebrate showing up—not perfection.
+          </p>
+
+          <div class="stats-grid">
+            <div class="stat-card card">
+              <p class="stat-card__label">Weekly streak</p>
+              <p class="stat-card__value" id="stat-streak">3 days</p>
+              <p class="stat-card__hint">Nice rhythm—keep it gentle.</p>
+            </div>
+            <div class="stat-card card">
+              <p class="stat-card__label">Workouts this week</p>
+              <p class="stat-card__value" id="stat-workouts">2 / 4</p>
+              <p class="stat-card__hint">Goal: four short sessions you both agreed on.</p>
+            </div>
+            <div class="stat-card card stat-card--wide">
+              <p class="stat-card__label">Shared accountability score</p>
+              <p class="stat-card__value" id="stat-score">82%</p>
+              <p class="stat-card__hint">Based on check-ins and replies (demo).</p>
+            </div>
+          </div>
+
+          <div class="card summary-card">
+            <p class="summary-card__title">Summary</p>
+            <p class="summary-card__text" id="progress-summary">
+              You and your partner are building a habit of checking in. That matters more than any single workout.
+            </p>
+          </div>
+
+          <p class="encouragement" id="encouragement-msg">
+            You do not have to be “good at this” yet. You only have to keep going—in small steps.
+          </p>
+
+          <div class="btn-row btn-row--stack">
+            <button type="button" class="btn btn--primary" id="btn-back-chat">Back to chat</button>
+            <button type="button" class="btn btn--secondary" id="btn-restart">Start over</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
