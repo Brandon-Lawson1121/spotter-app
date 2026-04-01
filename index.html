@@ -118,6 +118,29 @@
               We only use this to suggest partners—you can always change your mind later.
             </p>
 
+            <div class="field field--slider">
+              <div class="field-slider__head">
+                <label for="max-distance">Search within (miles)</label>
+                <output class="field-slider__output" id="distance-value" for="max-distance">10</output>
+              </div>
+              <input
+                type="range"
+                id="max-distance"
+                name="maxDistance"
+                min="1"
+                max="20"
+                step="1"
+                value="10"
+                aria-valuemin="1"
+                aria-valuemax="20"
+                aria-valuenow="10"
+                aria-describedby="max-distance-hint"
+              />
+              <p class="helper-text" id="max-distance-hint">
+                Each person gets a random distance up to this limit—demo only, not real GPS.
+              </p>
+            </div>
+
             <div class="field field--checkbox">
               <input type="checkbox" id="new-to-fitnessToggle" name="newToFitness" />
               <label for="new-to-fitnessToggle" class="label-inline">
@@ -153,6 +176,7 @@
                       <span id="swipe-card-name">Jordan M.</span>,
                       <span id="swipe-card-age">28</span>
                     </p>
+                    <p class="swipe-card__distance" id="swipe-card-distance">— mi away</p>
                     <p class="swipe-card__tags" id="swipe-card-tags">Intermediate · Mornings · Mixed</p>
                     <p class="swipe-card__bio" id="swipe-card-bio">Bio text</p>
                   </div>
@@ -216,10 +240,11 @@
           <h2 id="chat-heading" class="visually-hidden">Accountability chat</h2>
           <div class="chat-topbar card card--compact">
             <button type="button" class="btn-back" id="btn-chat-back" aria-label="Back to Messages">←</button>
-            <div class="chat-header chat-header--inline">
+              <div class="chat-header chat-header--inline">
               <div class="chat-header__avatar" id="chat-partner-initials">JM</div>
               <div class="chat-header__info">
                 <p class="chat-header__name" id="chat-partner-name">Jordan M.</p>
+                <p class="chat-header__distance" id="chat-partner-distance">— mi away</p>
                 <p class="chat-header__status"><span class="status-dot" aria-hidden="true"></span> Here to cheer you on</p>
               </div>
             </div>
