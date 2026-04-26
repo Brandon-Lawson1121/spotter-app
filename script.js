@@ -85,6 +85,8 @@ const session = {
     newToFitness: false,
     /** Max search radius (miles), 1–20 from preferences slider */
     maxDistanceMiles: 10,
+    minAge: 18,
+    maxAge: 50,
   },
   activePartner: null,
   workoutsThisWeek: 2,
@@ -98,6 +100,8 @@ const session = {
   chatMessagesByPartner: {},
   /** Monotonic id suffix for generated profiles */
   profileSerial: 0,
+  profilePage: 1,
+  editingProfile: false,
 };
 
 /** How many generated cards to keep ready in Discover */
@@ -129,6 +133,7 @@ const els = {
   encouragementMsg: document.getElementById("encouragement-msg"),
   panelSwipe: document.getElementById("panel-swipe"),
   panelMessages: document.getElementById("panel-messages"),
+  panelProfile: document.getElementById("panel-profile"),
   swipeCard: document.getElementById("swipe-card"),
   swipeStage: document.getElementById("swipe-stage"),
   swipeEmpty: document.getElementById("swipe-empty"),
@@ -137,7 +142,9 @@ const els = {
   dmEmpty: document.getElementById("dm-empty"),
   tabSwipeBtn: document.getElementById("tab-swipe-btn"),
   tabMessagesBtn: document.getElementById("tab-messages-btn"),
+  tabProfileBtn: document.getElementById("tab-profile-btn"),
   tabBadge: document.getElementById("tab-badge"),
+  darkModeToggle: document.getElementById("dark-mode-toggle"),
 };
 
 // -----------------------------------------------------------------------------
@@ -153,6 +160,18 @@ function randomInt(min, max) {
 
 function buildBio() {
   return `${pick(BIO_OPEN)} ${pick(BIO_MID)} ${pick(BIO_CLOSE)}`;
+}
+
+function buildAvatarDataUrl(initials, gender) {
+  const bg = gender === "female" ? "#d4ebe6" : "#b8dfd5";
+  const fg = "#2d7a6e";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="260" viewBox="0 0 420 260">
+    <rect width="420" height="260" fill="${bg}"/>
+    <circle cx="210" cy="96" r="48" fill="${fg}" opacity="0.28"/>
+    <path d="M118 232c12-60 54-92 92-92s80 32 92 92" fill="${fg}" opacity="0.32"/>
+    <text x="210" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="800" fill="${fg}">${initials}</text>
+  </svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
 /** Random distance in miles, between 0.5 and cap (cap max 20). */
@@ -197,13 +216,14 @@ function generateProfile() {
     displayName,
     initials,
     gender,
-    age: randomInt(22, 48),
+    age: randomInt(Math.min(session.user.minAge, session.user.maxAge), Math.max(session.user.minAge, session.user.maxAge)),
     goal: pick(GOAL_KEYS),
     experience: pick(EXP_KEYS),
     workoutType: pick(WORKOUT_KEYS),
     availability: pick(AVAIL_KEYS),
     bio: buildBio(),
     distanceMiles: randomDistanceWithinCap(session.user.maxDistanceMiles),
+    avatarUrl: buildAvatarDataUrl(initials, gender),
   };
 }
 
@@ -298,30 +318,69 @@ function displayAvailability(a) {
 // -----------------------------------------------------------------------------
 function selectMainTab(tab) {
   const isSwipe = tab === "swipe";
+  const isMessages = tab === "messages";
+  const isProfile = tab === "profile";
+
   if (els.panelSwipe) {
     els.panelSwipe.hidden = !isSwipe;
     els.panelSwipe.classList.toggle("main-panel--active", isSwipe);
   }
   if (els.panelMessages) {
-    els.panelMessages.hidden = isSwipe;
-    els.panelMessages.classList.toggle("main-panel--active", !isSwipe);
+    els.panelMessages.hidden = !isMessages;
+    els.panelMessages.classList.toggle("main-panel--active", isMessages);
   }
-  if (els.tabSwipeBtn) {
-    els.tabSwipeBtn.classList.toggle("tab-bar__btn--active", isSwipe);
-    els.tabSwipeBtn.setAttribute("aria-current", isSwipe ? "page" : "false");
+  if (els.panelProfile) {
+    els.panelProfile.hidden = !isProfile;
+    els.panelProfile.classList.toggle("main-panel--active", isProfile);
   }
-  if (els.tabMessagesBtn) {
-    els.tabMessagesBtn.classList.toggle("tab-bar__btn--active", !isSwipe);
-    els.tabMessagesBtn.setAttribute("aria-current", !isSwipe ? "page" : "false");
+
+  const buttons = [
+    [els.tabSwipeBtn, isSwipe],
+    [els.tabMessagesBtn, isMessages],
+    [els.tabProfileBtn, isProfile],
+  ];
+  buttons.forEach(([btn, active]) => {
+    if (!btn) return;
+    btn.classList.toggle("tab-bar__btn--active", active);
+    btn.setAttribute("aria-current", active ? "page" : "false");
+  });
+
+  if (isProfile) renderProfilePanel();
+}
+
+function renderProfilePanel() {
+  const name = session.user.name || "Your name";
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "YO";
+  const profileName = document.getElementById("profile-name");
+  const profileMeta = document.getElementById("profile-meta");
+  const profileFilters = document.getElementById("profile-filters");
+  const profileAvatar = document.getElementById("profile-avatar");
+  if (profileName) profileName.textContent = name;
+  if (profileMeta) {
+    profileMeta.textContent = `${displayGoalLabel(session.user.goal)} · ${displayExperience(session.user.experience)} · ${displayAvailability(session.user.availability)}`;
   }
+  if (profileFilters) {
+    const seekLabel = session.user.seeking === "both" ? "Anyone" : session.user.seeking === "male" ? "Men" : "Women";
+    profileFilters.textContent = `Looking for: ${seekLabel} · Ages ${session.user.minAge}-${session.user.maxAge} · Within ${session.user.maxDistanceMiles} miles`;
+  }
+  if (profileAvatar) profileAvatar.textContent = initials;
 }
 
 // -----------------------------------------------------------------------------
 // Swipe deck (Discover tab)
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Swipe deck (Discover tab)
+// -----------------------------------------------------------------------------
 const SWIPE_THRESHOLD = 95;
 let swipePointerId = null;
-let swipeDrag = { startX: 0, active: false };
+let swipeDrag = { startX: 0, startY: 0, active: false, target: null };
 
 function initSwipeDeck() {
   session.swipeDeck = [];
@@ -330,7 +389,10 @@ function initSwipeDeck() {
 }
 
 function fillSwipeCardEl(profile) {
-  document.getElementById("swipe-card-avatar").textContent = profile.initials;
+  const avatar = document.getElementById("swipe-card-avatar");
+  avatar.textContent = profile.initials;
+  avatar.style.backgroundImage = profile.avatarUrl || "";
+  avatar.dataset.photo = profile.avatarUrl ? "true" : "false";
   document.getElementById("swipe-card-name").textContent = profile.displayName;
   document.getElementById("swipe-card-age").textContent = String(profile.age);
   const tags = `${displayExperience(profile.experience)} · ${displayAvailability(profile.availability)} · ${displayWorkoutLabel(profile.workoutType)}`;
@@ -343,11 +405,18 @@ function fillSwipeCardEl(profile) {
 function setSwipeStamps(dx) {
   const pass = document.getElementById("swipe-stamp-pass");
   const conn = document.getElementById("swipe-stamp-connect");
-  if (!pass || !conn) return;
+  if (!pass || !conn || !els.swipeCard) return;
+
   const showPass = dx < -40;
   const showConn = dx > 40;
-  pass.style.opacity = showPass ? Math.min(1, Math.abs(dx) / 120) : 0;
-  conn.style.opacity = showConn ? Math.min(1, dx / 120) : 0;
+  const passOpacity = showPass ? Math.min(1, Math.abs(dx) / 120) : 0;
+  const connOpacity = showConn ? Math.min(1, dx / 120) : 0;
+
+  pass.style.opacity = passOpacity;
+  conn.style.opacity = connOpacity;
+
+  els.swipeCard.classList.toggle("swipe-card--preview-pass", showPass);
+  els.swipeCard.classList.toggle("swipe-card--preview-connect", showConn);
 }
 
 function applySwipeTransform(dx, rotationFactor) {
@@ -359,7 +428,12 @@ function applySwipeTransform(dx, rotationFactor) {
 function resetSwipeCardVisual() {
   if (!els.swipeCard) return;
   els.swipeCard.style.transform = "";
-  els.swipeCard.classList.remove("swipe-card--fly-left", "swipe-card--fly-right");
+  els.swipeCard.classList.remove(
+    "swipe-card--fly-left",
+    "swipe-card--fly-right",
+    "swipe-card--preview-pass",
+    "swipe-card--preview-connect",
+  );
   setSwipeStamps(0);
 }
 
@@ -378,23 +452,42 @@ function completeSwipe(direction) {
   if (!session.swipeDeck.length || !els.swipeCard) return;
   const profile = session.swipeDeck.shift();
   if (direction === "right") {
-    upsertDmThread(profile, "You connected—tap to chat", false);
+    upsertDmThread(profile, "You teamed up—tap to chat", false);
   }
-  els.swipeCard.classList.add(direction === "right" ? "swipe-card--fly-right" : "swipe-card--fly-left");
+
+  const isConnect = direction === "right";
+  els.swipeCard.classList.toggle("swipe-card--preview-connect", isConnect);
+  els.swipeCard.classList.toggle("swipe-card--preview-pass", !isConnect);
+  setSwipeStamps(isConnect ? 120 : -120);
+
   window.setTimeout(() => {
-    els.swipeCard.classList.remove("swipe-card--fly-right", "swipe-card--fly-left");
+    els.swipeCard.classList.add(isConnect ? "swipe-card--fly-right" : "swipe-card--fly-left");
+  }, 180);
+
+  window.setTimeout(() => {
+    els.swipeCard.classList.remove(
+      "swipe-card--fly-right",
+      "swipe-card--fly-left",
+      "swipe-card--preview-pass",
+      "swipe-card--preview-connect",
+    );
     topUpSwipeDeck();
     renderSwipeCard();
-  }, 320);
+  }, 520);
 }
 
 function onSwipePointerDown(e) {
   if (!session.swipeDeck.length) return;
   if (e.button !== undefined && e.button !== 0) return;
+  if (e.target.closest("button, input, select, textarea, a")) return;
   swipeDrag.active = true;
   swipeDrag.startX = e.clientX;
+  swipeDrag.startY = e.clientY;
+  swipeDrag.target = e.currentTarget;
   swipePointerId = e.pointerId;
-  els.swipeCard.setPointerCapture(e.pointerId);
+  if (swipeDrag.target && swipeDrag.target.setPointerCapture) {
+    swipeDrag.target.setPointerCapture(e.pointerId);
+  }
 }
 
 function onSwipePointerMove(e) {
@@ -408,11 +501,14 @@ function onSwipePointerUp(e) {
   if (!swipeDrag.active || e.pointerId !== swipePointerId) return;
   swipeDrag.active = false;
   try {
-    els.swipeCard.releasePointerCapture(swipePointerId);
+    if (swipeDrag.target && swipeDrag.target.releasePointerCapture) {
+      swipeDrag.target.releasePointerCapture(swipePointerId);
+    }
   } catch {
     /* ignore */
   }
   swipePointerId = null;
+  swipeDrag.target = null;
   const dx = e.clientX - swipeDrag.startX;
   if (dx > SWIPE_THRESHOLD) {
     completeSwipe("right");
@@ -424,11 +520,12 @@ function onSwipePointerUp(e) {
 }
 
 function bindSwipeGestures() {
-  if (!els.swipeCard) return;
-  els.swipeCard.addEventListener("pointerdown", onSwipePointerDown);
-  els.swipeCard.addEventListener("pointermove", onSwipePointerMove);
-  els.swipeCard.addEventListener("pointerup", onSwipePointerUp);
-  els.swipeCard.addEventListener("pointercancel", onSwipePointerUp);
+  const swipeSurface = els.panelSwipe || els.swipeStage || els.swipeCard;
+  if (!swipeSurface) return;
+  swipeSurface.addEventListener("pointerdown", onSwipePointerDown);
+  swipeSurface.addEventListener("pointermove", onSwipePointerMove);
+  swipeSurface.addEventListener("pointerup", onSwipePointerUp);
+  swipeSurface.addEventListener("pointercancel", onSwipePointerUp);
 }
 
 // -----------------------------------------------------------------------------
@@ -509,6 +606,7 @@ function enterMainApp() {
   session.dmThreads = [];
   session.chatMessagesByPartner = {};
   session.profileSerial = 0;
+  session.profilePage = 1;
   session.swipeDeck = [];
   initSwipeDeck();
   renderDmList();
@@ -521,7 +619,7 @@ function enterMainApp() {
 // Form validation
 // -----------------------------------------------------------------------------
 function clearFieldErrors() {
-  ["name", "goal", "experience", "workout", "availability", "seeking"].forEach((suffix) => {
+  ["name", "goal", "experience", "workout", "availability", "seeking", "age"].forEach((suffix) => {
     const err = document.getElementById(`error-${suffix === "workout" ? "workout" : suffix}`);
     if (err) err.textContent = "";
   });
@@ -536,6 +634,8 @@ function validatePrefsForm() {
   const workout = document.getElementById("workout-type").value;
   const availability = document.getElementById("availability").value;
   const seeking = document.getElementById("seeking").value;
+  const minAge = Number(document.getElementById("min-age").value);
+  const maxAge = Number(document.getElementById("max-age").value);
 
   if (name.length < 2) {
     document.getElementById("error-name").textContent = "Please enter at least 2 characters.";
@@ -561,6 +661,10 @@ function validatePrefsForm() {
     document.getElementById("error-seeking").textContent = "Pick who you’d like to be paired with.";
     ok = false;
   }
+  if (minAge > maxAge) {
+    document.getElementById("error-age").textContent = "Minimum age cannot be higher than maximum age.";
+    ok = false;
+  }
 
   return ok;
 }
@@ -572,6 +676,8 @@ function readFormIntoSession() {
   session.user.workoutType = document.getElementById("workout-type").value;
   session.user.availability = document.getElementById("availability").value;
   session.user.seeking = document.getElementById("seeking").value;
+  session.user.minAge = Number(document.getElementById("min-age").value) || 18;
+  session.user.maxAge = Number(document.getElementById("max-age").value) || 40;
   session.user.newToFitness = document.getElementById("new-to-fitnessToggle").checked;
   const distEl = document.getElementById("max-distance");
   const raw = distEl ? parseInt(distEl.value, 10) : 10;
@@ -745,22 +851,69 @@ function syncProgressUI() {
 }
 
 // -----------------------------------------------------------------------------
-// Event bindings
+// Profile editing and preference controls
 // -----------------------------------------------------------------------------
-function bindEvents() {
+function populateFormFromSession() {
+  const mappings = [
+    ["user-name", session.user.name],
+    ["goal", session.user.goal],
+    ["experience", session.user.experience],
+    ["workout-type", session.user.workoutType],
+    ["availability", session.user.availability],
+    ["seeking", session.user.seeking],
+    ["min-age", session.user.minAge],
+    ["max-age", session.user.maxAge],
+    ["max-distance", session.user.maxDistanceMiles],
+  ];
+  mappings.forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el && value !== undefined && value !== null) el.value = String(value);
+  });
+  const newbie = document.getElementById("new-to-fitnessToggle");
+  if (newbie) newbie.checked = !!session.user.newToFitness;
+  syncRangeControls();
+}
+
+function syncRangeControls() {
+  const minAge = document.getElementById("min-age");
+  const maxAge = document.getElementById("max-age");
+  const ageOut = document.getElementById("age-range-value");
+  if (minAge && maxAge && ageOut) {
+    let min = Number(minAge.value);
+    let max = Number(maxAge.value);
+    if (min > max) {
+      if (document.activeElement === minAge) maxAge.value = String(min);
+      else minAge.value = String(max);
+      min = Number(minAge.value);
+      max = Number(maxAge.value);
+    }
+    ageOut.textContent = `${min}–${max}`;
+    minAge.setAttribute("aria-valuenow", String(min));
+    maxAge.setAttribute("aria-valuenow", String(max));
+  }
+
   const distSlider = document.getElementById("max-distance");
   const distOut = document.getElementById("distance-value");
-  function syncDistanceSliderUI() {
-    if (!distSlider || !distOut) return;
+  if (distSlider && distOut) {
     distOut.textContent = distSlider.value;
     distSlider.setAttribute("aria-valuenow", distSlider.value);
   }
-  if (distSlider) {
-    distSlider.addEventListener("input", syncDistanceSliderUI);
-    syncDistanceSliderUI();
-  }
+}
+
+// -----------------------------------------------------------------------------
+// Event bindings
+// -----------------------------------------------------------------------------
+function bindEvents() {
+  ["max-distance", "min-age", "max-age"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", syncRangeControls);
+  });
+  syncRangeControls();
 
   document.getElementById("btn-get-started").addEventListener("click", () => {
+    session.editingProfile = false;
+    const submitBtn = document.getElementById("btn-find-match");
+    if (submitBtn) submitBtn.textContent = "Start discovering";
     showScreen("preferences");
   });
 
@@ -768,11 +921,37 @@ function bindEvents() {
     e.preventDefault();
     if (!validatePrefsForm()) return;
     readFormIntoSession();
-    enterMainApp();
+    if (session.editingProfile) {
+      session.swipeDeck = [];
+      topUpSwipeDeck();
+      renderSwipeCard();
+      renderProfilePanel();
+      selectMainTab("profile");
+      showScreen("main");
+      session.editingProfile = false;
+      const submitBtn = document.getElementById("btn-find-match");
+      if (submitBtn) submitBtn.textContent = "Start discovering";
+    } else {
+      enterMainApp();
+    }
   });
 
   if (els.tabSwipeBtn) els.tabSwipeBtn.addEventListener("click", () => selectMainTab("swipe"));
   if (els.tabMessagesBtn) els.tabMessagesBtn.addEventListener("click", () => selectMainTab("messages"));
+  if (els.tabProfileBtn) els.tabProfileBtn.addEventListener("click", () => selectMainTab("profile"));
+  const btnEditProfile = document.getElementById("btn-edit-profile");
+  if (btnEditProfile) btnEditProfile.addEventListener("click", () => {
+    session.editingProfile = true;
+    populateFormFromSession();
+    const submitBtn = document.getElementById("btn-find-match");
+    if (submitBtn) submitBtn.textContent = "Save profile changes";
+    showScreen("preferences");
+  });
+  if (els.darkModeToggle) {
+    els.darkModeToggle.addEventListener("change", () => {
+      document.body.classList.toggle("dark-mode", els.darkModeToggle.checked);
+    });
+  }
 
   document.getElementById("btn-swipe-pass").addEventListener("click", () => {
     if (session.swipeDeck.length) completeSwipe("left");
@@ -781,6 +960,7 @@ function bindEvents() {
     if (session.swipeDeck.length) completeSwipe("right");
   });
   document.getElementById("btn-swipe-reset").addEventListener("click", () => {
+    session.profilePage += 1;
     session.swipeDeck = [];
     topUpSwipeDeck();
     renderSwipeCard();
@@ -861,12 +1041,15 @@ function bindEvents() {
       seeking: "",
       newToFitness: false,
       maxDistanceMiles: 10,
+      minAge: 18,
+      maxAge: 50,
     };
     session.activePartner = null;
     session.swipeDeck = [];
     session.dmThreads = [];
     session.chatMessagesByPartner = {};
     session.profileSerial = 0;
+    session.profilePage = 1;
     session.workoutsThisWeek = 2;
     session.weeklyGoal = 4;
     session.streakDays = 3;
@@ -874,12 +1057,7 @@ function bindEvents() {
     session.rescheduleIndex = 0;
     els.form.reset();
     clearFieldErrors();
-    const ds = document.getElementById("max-distance");
-    const dout = document.getElementById("distance-value");
-    if (ds && dout) {
-      dout.textContent = ds.value;
-      ds.setAttribute("aria-valuenow", ds.value);
-    }
+    syncRangeControls();
     els.nextWorkoutText.textContent =
       "Light 25-minute walk or stretch · Tomorrow 7:30 AM";
     showScreen("welcome");
@@ -897,4 +1075,3 @@ function init() {
 }
 
 init();
-
