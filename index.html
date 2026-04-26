@@ -29,7 +29,7 @@
           <h1 id="welcome-heading" class="hero-title">Spotter</h1>
           <p class="hero-tagline">Find your fitness accountability partner</p>
           <p class="hero-support">
-            Many people stop working out,not because they do not care, but because going alone is hard.
+            Many people stop working out, not because they do not care, but because going alone is hard.
             Spotter pairs you with someone who gets your goals and your schedule, so you can show up together.
           </p>
           <p class="helper-text">
@@ -47,7 +47,7 @@
         <div class="screen__content">
           <h2 id="prefs-heading" class="screen-title">Tell us about you</h2>
           <p class="screen-lead">
-            We use this to suggest a partner who fits your rhythmnot to label you. Change anything anytime.
+            We use this to suggest a partner who fits your rhythm, not to label you. Change anything anytime.
           </p>
 
           <form class="prefs-form" id="prefs-form" novalidate>
@@ -102,6 +102,19 @@
                 <option value="flexible">Flexible</option>
               </select>
               <p class="field-error" id="error-availability" role="alert"></p>
+            </div>
+
+            <div class="field field--age-range">
+              <div class="field-slider__head">
+                <label>Age range</label>
+                <output class="field-slider__output" id="age-range-value">18–50</output>
+              </div>
+              <label class="range-label" for="min-age">Minimum age</label>
+              <input type="range" id="min-age" name="minAge" min="18" max="60" step="1" value="18" />
+              <label class="range-label" for="max-age">Maximum age</label>
+              <input type="range" id="max-age" name="maxAge" min="18" max="60" step="1" value="50" />
+              <p class="helper-text" id="age-range-hint">Drag either slider to set who appears in Discover.</p>
+              <p class="field-error" id="error-age" role="alert"></p>
             </div>
 
             <div class="field">
@@ -166,11 +179,11 @@
             <div class="screen__content screen__content--swipe">
               <h2 class="swipe-title">Discover partners</h2>
               <p class="swipe-sub">
-                Swipe right if you’d like to team up, left to pass. Same vibe as dating apps, just for accountability, not romance.
+                Swipe anywhere on this screen, or use the buttons below. Left passes. Right connects.
               </p>
               <div class="swipe-stage" id="swipe-stage">
                 <div class="swipe-card" id="swipe-card" tabindex="0">
-                  <div class="swipe-card__photo" id="swipe-card-avatar" aria-hidden="true">SP</div>
+                  <div class="swipe-card__photo" id="swipe-card-avatar" aria-label="Profile picture" role="img">SP</div>
                   <div class="swipe-card__body">
                     <p class="swipe-card__name-line">
                       <span id="swipe-card-name">Jordan M.</span>,
@@ -181,8 +194,8 @@
                     <p class="swipe-card__bio" id="swipe-card-bio">Bio text</p>
                   </div>
                   <div class="swipe-card__labels" aria-hidden="true">
-                    <span class="swipe-card__stamp swipe-card__stamp--pass" id="swipe-stamp-pass">PASS</span>
-                    <span class="swipe-card__stamp swipe-card__stamp--connect" id="swipe-stamp-connect">CONNECT</span>
+                    <span class="swipe-card__stamp swipe-card__stamp--pass" id="swipe-stamp-pass">✕</span>
+                    <span class="swipe-card__stamp swipe-card__stamp--connect" id="swipe-stamp-connect">♥</span>
                   </div>
                 </div>
               </div>
@@ -196,11 +209,11 @@
                   Connect
                 </button>
               </div>
-              <p class="helper-text swipe-helper" id="swipe-helper">Drag the card or use the buttons below.</p>
+              <p class="helper-text swipe-helper" id="swipe-helper">Swipe anywhere on the screen, or use the buttons below.</p>
               <div class="empty-state card" id="swipe-empty" hidden>
                 <p class="empty-state__title">You’re all caught up</p>
-                <p class="empty-state__text">No more people in your filters right now. Check Messages—or adjust your preferences later.</p>
-                <button type="button" class="btn btn--secondary" id="btn-swipe-reset">Shuffle new deck (demo)</button>
+                <p class="empty-state__text">You reached the end of this page of partners. Load another page or adjust your preferences.</p>
+                <button type="button" class="btn btn--secondary" id="btn-swipe-reset">Load next page</button>
               </div>
             </div>
           </div>
@@ -219,6 +232,39 @@
               </div>
             </div>
           </div>
+
+          <!-- Tab: User profile / settings -->
+          <div class="main-panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile-btn" hidden>
+            <div class="screen__content">
+              <h2 class="screen-title">Your profile</h2>
+              <p class="screen-lead">Manage the info other partners would see in this prototype.</p>
+
+              <div class="card profile-card">
+                <div class="profile-card__avatar" id="profile-avatar" aria-hidden="true">YO</div>
+                <div>
+                  <p class="profile-card__name" id="profile-name">Your name</p>
+                  <p class="profile-card__meta" id="profile-meta">Goal · Experience · Availability</p>
+                </div>
+              </div>
+
+              <div class="card settings-card">
+                <p class="settings-card__title">Preferences</p>
+                <p class="settings-card__text" id="profile-filters">Distance, age range, and partner preference will show here.</p>
+                <button type="button" class="btn btn--secondary btn--large" id="btn-edit-profile">Edit preferences</button>
+              </div>
+
+              <div class="card settings-card settings-card--row">
+                <div>
+                  <p class="settings-card__title">Dark mode</p>
+                  <p class="settings-card__text">Switch to a darker theme for low-light use.</p>
+                </div>
+                <label class="switch" for="dark-mode-toggle">
+                  <input type="checkbox" id="dark-mode-toggle" />
+                  <span class="switch__track"><span class="switch__thumb"></span></span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <nav class="tab-bar" aria-label="Main views" id="tab-bar">
@@ -230,6 +276,10 @@
             <span class="tab-bar__icon" aria-hidden="true">💬</span>
             Messages
             <span class="tab-bar__badge" id="tab-badge" hidden>0</span>
+          </button>
+          <button type="button" class="tab-bar__btn" id="tab-profile-btn" data-tab="profile">
+            <span class="tab-bar__icon" aria-hidden="true">👤</span>
+            Profile
           </button>
         </nav>
       </section>
