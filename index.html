@@ -14,10 +14,10 @@
     <header class="flow-header" aria-label="Your progress in Spotter">
       <div class="flow-header__inner">
         <span class="flow-header__brand">Spotter</span>
-        <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-valuetext="Step 1 of 5: Welcome" id="progress-track">
+        <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1" aria-valuetext="Step 1 of 6: Welcome" id="progress-track">
           <div class="progress-track__fill" id="progress-fill"></div>
         </div>
-        <span class="flow-header__step" id="step-label">1 / 5</span>
+        <span class="flow-header__step" id="step-label">1 / 6</span>
       </div>
     </header>
 
@@ -42,8 +42,35 @@
         </div>
       </section>
 
-      <!-- Screen 2: Preferences -->
-      <section class="screen" id="screen-preferences" data-step="2" aria-labelledby="prefs-heading" hidden>
+      <!-- Screen 2: Age Verification -->
+      <section class="screen" id="screen-age" data-step="2" aria-labelledby="age-heading" hidden>
+        <div class="screen__content">
+          <h2 id="age-heading" class="screen-title">Age verification</h2>
+          <p class="screen-lead">
+            Before you can use Spotter, enter your birthday so we can make sure you meet the age requirement.
+          </p>
+
+          <form class="prefs-form" id="age-form" novalidate>
+            <div class="field">
+              <label for="birthdate">Your birthday</label>
+              <input type="date" id="birthdate" name="birthdate" required aria-describedby="birthdate-hint" />
+              <p class="helper-text" id="birthdate-hint">You must be 18 or older to use Spotter. Your profile can show your age, but your birthday stays hidden unless you turn that on in Privacy.</p>
+              <p class="field-error" id="error-birthdate" role="alert"></p>
+            </div>
+
+            <div class="card age-result-card" id="age-result-card" hidden>
+              <p class="settings-card__title">Your age</p>
+              <p class="settings-card__text" id="age-result-text">Age will appear here.</p>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--large" id="btn-age-continue">Continue</button>
+            <p class="microcopy microcopy--muted">You cannot access the app options until this step is passed.</p>
+          </form>
+        </div>
+      </section>
+
+      <!-- Screen 3: Preferences -->
+      <section class="screen" id="screen-preferences" data-step="3" aria-labelledby="prefs-heading" hidden>
         <div class="screen__content">
           <h2 id="prefs-heading" class="screen-title">Tell us about you</h2>
           <p class="screen-lead">
@@ -171,8 +198,8 @@
         </div>
       </section>
 
-      <!-- Screen 3: Main hub — Discover (swipe) + Messages tabs -->
-      <section class="screen screen--main" id="screen-main" data-step="3" aria-label="Spotter home" hidden>
+      <!-- Screen 4: Main hub — Discover (swipe) + Messages tabs -->
+      <section class="screen screen--main" id="screen-main" data-step="4" aria-label="Spotter home" hidden>
         <div class="main-panels" id="main-panels">
           <!-- Tab: Tinder-style gym discover -->
           <div class="main-panel main-panel--active" id="panel-swipe" role="tabpanel" aria-labelledby="tab-swipe-btn">
@@ -244,6 +271,7 @@
                 <div>
                   <p class="profile-card__name" id="profile-name">Your name</p>
                   <p class="profile-card__meta" id="profile-meta">Goal · Experience · Availability</p>
+                  <p class="profile-card__meta" id="profile-age-line">Age verified</p>
                 </div>
               </div>
 
@@ -266,6 +294,7 @@
 
               <div class="card settings-card">
                 <p class="settings-card__title">Privacy controls</p>
+                <p class="settings-card__text" id="age-verification-status">Age verification is completed before setup. Your age can be shown without revealing your birthday.</p>
                 <p class="settings-card__text">Choose what other people can see before they connect with you.</p>
                 <div class="privacy-list">
                   <label class="privacy-row" for="privacy-distance-toggle">
@@ -275,6 +304,10 @@
                   <label class="privacy-row" for="privacy-age-toggle">
                     <span>Show my age</span>
                     <input type="checkbox" id="privacy-age-toggle" checked />
+                  </label>
+                  <label class="privacy-row" for="privacy-birthday-toggle">
+                    <span>Show my birthday</span>
+                    <input type="checkbox" id="privacy-birthday-toggle" />
                   </label>
                   <label class="privacy-row" for="privacy-matches-toggle">
                     <span>Only matched partners can message me</span>
@@ -308,8 +341,8 @@
         </nav>
       </section>
 
-      <!-- Screen 4: Chat -->
-      <section class="screen" id="screen-chat" data-step="4" aria-labelledby="chat-heading" hidden>
+      <!-- Screen 5: Chat -->
+      <section class="screen" id="screen-chat" data-step="5" aria-labelledby="chat-heading" hidden>
         <div class="screen__content screen__content--chat">
           <h2 id="chat-heading" class="visually-hidden">Accountability chat</h2>
           <div class="chat-topbar card card--compact">
@@ -369,8 +402,8 @@
         </div>
       </section>
 
-      <!-- Screen 5: Progress -->
-      <section class="screen" id="screen-progress" data-step="5" aria-labelledby="progress-heading" hidden>
+      <!-- Screen 6: Progress -->
+      <section class="screen" id="screen-progress" data-step="6" aria-labelledby="progress-heading" hidden>
         <div class="screen__content">
           <h2 id="progress-heading" class="screen-title">Your week together</h2>
           <p class="screen-lead">
