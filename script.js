@@ -85,12 +85,15 @@ const session = {
     newToFitness: false,
     /** Max search radius (miles), 1–20 from preferences slider */
     maxDistanceMiles: 10,
+    birthdate: "",
+    age: null,
     minAge: 18,
     maxAge: 50,
   },
   privacy: {
     showDistance: true,
     showAge: true,
+    showBirthday: false,
     matchedOnly: true,
     pausedDiscover: false,
   },
@@ -114,6 +117,7 @@ const session = {
 
 /** How many generated cards to keep ready in Discover */
 const SWIPE_DECK_TARGET = 16;
+const MINIMUM_AGE = 18;
 
 // -----------------------------------------------------------------------------
 // DOM references
@@ -125,12 +129,16 @@ const els = {
   flowHeader: document.querySelector(".flow-header"),
   screens: {
     welcome: document.getElementById("screen-welcome"),
+    age: document.getElementById("screen-age"),
     preferences: document.getElementById("screen-preferences"),
     main: document.getElementById("screen-main"),
     chat: document.getElementById("screen-chat"),
     progress: document.getElementById("screen-progress"),
   },
   form: document.getElementById("prefs-form"),
+  ageForm: document.getElementById("age-form"),
+  ageResultCard: document.getElementById("age-result-card"),
+  ageResultText: document.getElementById("age-result-text"),
   chatLog: document.getElementById("chat-log"),
   chatInput: document.getElementById("chat-input"),
   nextWorkoutText: document.getElementById("next-workout-text"),
@@ -155,6 +163,9 @@ const els = {
   darkModeToggle: document.getElementById("dark-mode-toggle"),
   privacyDistanceToggle: document.getElementById("privacy-distance-toggle"),
   privacyAgeToggle: document.getElementById("privacy-age-toggle"),
+  privacyBirthdayToggle: document.getElementById("privacy-birthday-toggle"),
+  ageVerificationStatus: document.getElementById("age-verification-status"),
+  profileAgeLine: document.getElementById("profile-age-line"),
   privacyMatchesToggle: document.getElementById("privacy-matches-toggle"),
   privacyPauseToggle: document.getElementById("privacy-pause-toggle"),
   privacyStatus: document.getElementById("privacy-status"),
@@ -170,6 +181,25 @@ function pick(arr) {
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function calculateAgeFromBirthdate(birthdateValue) {
+  if (!birthdateValue) return null;
+  const dob = new Date(`${birthdateValue}T00:00:00`);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  const dayDiff = today.getDate() - dob.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) age -= 1;
+  return age;
+}
+
+function formatBirthdayForDisplay(birthdateValue) {
+  if (!birthdateValue) return "Not shown";
+  const dob = new Date(`${birthdateValue}T00:00:00`);
+  if (Number.isNaN(dob.getTime())) return "Not shown";
+  return dob.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
 function buildBio() {
@@ -253,13 +283,15 @@ function topUpSwipeDeck() {
 function showScreen(screenKey) {
   const stepMap = {
     welcome: 1,
-    preferences: 2,
-    main: 3,
-    chat: 4,
-    progress: 5,
+    age: 2,
+    preferences: 3,
+    main: 4,
+    chat: 5,
+    progress: 6,
   };
+  const totalSteps = 6;
   const step = stepMap[screenKey] || 1;
-  const pct = (step / 5) * 100;
+  const pct = (step / totalSteps) * 100;
 
   Object.entries(els.screens).forEach(([key, el]) => {
     if (!el) return;
@@ -282,7 +314,7 @@ function showScreen(screenKey) {
 
   if (els.progressFill) els.progressFill.style.width = `${pct}%`;
   if (els.stepLabel) {
-    els.stepLabel.textContent = screenKey === "main" ? "Home" : `${step} / 5`;
+    els.stepLabel.textContent = screenKey === "main" ? "Home" : `${step} / ${totalSteps}`;
   }
   if (els.progressTrack) {
     els.progressTrack.setAttribute("aria-valuenow", String(step));
@@ -290,12 +322,13 @@ function showScreen(screenKey) {
       "aria-valuetext",
       screenKey === "main"
         ? "Home: Discover and Messages"
-        : `Step ${step} of 5: ${titleCase(screenKey)}`,
+        : `Step ${step} of ${totalSteps}: ${titleCase(screenKey)}`,
     );
   }
 }
 
 function titleCase(key) {
+  if (key === "age") return "Age Verification";
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
@@ -379,6 +412,11 @@ function renderProfilePanel() {
   if (profileMeta) {
     profileMeta.textContent = `${displayGoalLabel(session.user.goal)} · ${displayExperience(session.user.experience)} · ${displayAvailability(session.user.availability)}`;
   }
+  if (els.profileAgeLine) {
+    const agePart = session.user.age ? `Age ${session.user.age}` : "Age not verified";
+    const birthdayPart = session.privacy.showBirthday && session.user.birthdate ? ` · Birthday: ${formatBirthdayForDisplay(session.user.birthdate)}` : "";
+    els.profileAgeLine.textContent = `${agePart}${birthdayPart}`;
+  }
   if (profileFilters) {
     const seekLabel = session.user.seeking === "both" ? "Anyone" : session.user.seeking === "male" ? "Men" : "Women";
     const distText = session.privacy.showDistance ? `Within ${session.user.maxDistanceMiles} miles` : "Distance hidden";
@@ -392,21 +430,31 @@ function renderProfilePanel() {
 function syncPrivacyControls() {
   if (els.privacyDistanceToggle) els.privacyDistanceToggle.checked = session.privacy.showDistance;
   if (els.privacyAgeToggle) els.privacyAgeToggle.checked = session.privacy.showAge;
+  if (els.privacyBirthdayToggle) els.privacyBirthdayToggle.checked = session.privacy.showBirthday;
   if (els.privacyMatchesToggle) els.privacyMatchesToggle.checked = session.privacy.matchedOnly;
   if (els.privacyPauseToggle) els.privacyPauseToggle.checked = session.privacy.pausedDiscover;
   if (els.privacyStatus) {
     const parts = [];
     parts.push(session.privacy.showDistance ? "distance visible" : "distance hidden");
     parts.push(session.privacy.showAge ? "age visible" : "age hidden");
+    parts.push(session.privacy.showBirthday ? "birthday visible" : "birthday hidden");
     parts.push(session.privacy.matchedOnly ? "matched-only messages" : "open messages");
     if (session.privacy.pausedDiscover) parts.push("profile paused");
     els.privacyStatus.textContent = `Current privacy: ${parts.join(" · ")}.`;
+  }
+  if (els.ageVerificationStatus) {
+    const ageText = session.user.age ? `Verified age: ${session.user.age}.` : "Age not verified yet.";
+    const birthdayText = session.privacy.showBirthday && session.user.birthdate
+      ? ` Birthday visible as ${formatBirthdayForDisplay(session.user.birthdate)}.`
+      : " Birthday hidden.";
+    els.ageVerificationStatus.textContent = `${ageText}${birthdayText}`;
   }
 }
 
 function readPrivacyControls() {
   if (els.privacyDistanceToggle) session.privacy.showDistance = els.privacyDistanceToggle.checked;
   if (els.privacyAgeToggle) session.privacy.showAge = els.privacyAgeToggle.checked;
+  if (els.privacyBirthdayToggle) session.privacy.showBirthday = els.privacyBirthdayToggle.checked;
   if (els.privacyMatchesToggle) session.privacy.matchedOnly = els.privacyMatchesToggle.checked;
   if (els.privacyPauseToggle) session.privacy.pausedDiscover = els.privacyPauseToggle.checked;
   syncPrivacyControls();
@@ -659,6 +707,41 @@ function enterMainApp() {
 }
 
 // -----------------------------------------------------------------------------
+// Initial age verification
+// -----------------------------------------------------------------------------
+function clearAgeError() {
+  const err = document.getElementById("error-birthdate");
+  if (err) err.textContent = "";
+}
+
+function validateInitialAge() {
+  clearAgeError();
+  const birthdateEl = document.getElementById("birthdate");
+  const birthdate = birthdateEl ? birthdateEl.value : "";
+  const verifiedAge = calculateAgeFromBirthdate(birthdate);
+
+  if (verifiedAge === null) {
+    const err = document.getElementById("error-birthdate");
+    if (err) err.textContent = "Please enter your birthday first.";
+    return false;
+  }
+
+  if (verifiedAge < MINIMUM_AGE) {
+    const err = document.getElementById("error-birthdate");
+    if (err) err.textContent = `You must be ${MINIMUM_AGE} or older to use Spotter.`;
+    if (els.ageResultCard) els.ageResultCard.hidden = false;
+    if (els.ageResultText) els.ageResultText.textContent = `You are ${verifiedAge}. Spotter is locked until you meet the age requirement.`;
+    return false;
+  }
+
+  session.user.birthdate = birthdate;
+  session.user.age = verifiedAge;
+  if (els.ageResultCard) els.ageResultCard.hidden = false;
+  if (els.ageResultText) els.ageResultText.textContent = `Verified: you are ${verifiedAge}.`;
+  return true;
+}
+
+// -----------------------------------------------------------------------------
 // Form validation
 // -----------------------------------------------------------------------------
 function clearFieldErrors() {
@@ -671,14 +754,15 @@ function clearFieldErrors() {
 function validatePrefsForm() {
   clearFieldErrors();
   let ok = true;
-  const name = document.getElementById("user-name").value.trim();
   const goal = document.getElementById("goal").value;
+  const name = document.getElementById("user-name").value.trim();
   const experience = document.getElementById("experience").value;
   const workout = document.getElementById("workout-type").value;
   const availability = document.getElementById("availability").value;
   const seeking = document.getElementById("seeking").value;
   const minAge = Number(document.getElementById("min-age").value);
   const maxAge = Number(document.getElementById("max-age").value);
+
 
   if (name.length < 2) {
     document.getElementById("error-name").textContent = "Please enter at least 2 characters.";
@@ -985,11 +1069,23 @@ function bindEvents() {
     session.editingProfile = false;
     const submitBtn = document.getElementById("btn-find-match");
     if (submitBtn) submitBtn.textContent = "Start discovering";
-    showScreen("preferences");
+    showScreen("age");
   });
+
+  if (els.ageForm) {
+    els.ageForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!validateInitialAge()) return;
+      showScreen("preferences");
+    });
+  }
 
   els.form.addEventListener("submit", (e) => {
     e.preventDefault();
+    if (!session.user.age || session.user.age < MINIMUM_AGE) {
+      showScreen("age");
+      return;
+    }
     if (!validatePrefsForm()) return;
     readFormIntoSession();
     if (session.editingProfile) {
@@ -1024,7 +1120,7 @@ function bindEvents() {
     });
   }
 
-  [els.privacyDistanceToggle, els.privacyAgeToggle, els.privacyMatchesToggle, els.privacyPauseToggle].forEach((toggle) => {
+  [els.privacyDistanceToggle, els.privacyAgeToggle, els.privacyBirthdayToggle, els.privacyMatchesToggle, els.privacyPauseToggle].forEach((toggle) => {
     if (toggle) toggle.addEventListener("change", readPrivacyControls);
   });
   syncPrivacyControls();
@@ -1124,10 +1220,12 @@ function bindEvents() {
       seeking: "",
       newToFitness: false,
       maxDistanceMiles: 10,
+      birthdate: "",
+      age: null,
       minAge: 18,
       maxAge: 50,
     };
-    session.privacy = { showDistance: true, showAge: true, matchedOnly: true, pausedDiscover: false };
+    session.privacy = { showDistance: true, showAge: true, showBirthday: false, matchedOnly: true, pausedDiscover: false };
     session.blockedPartnerIds = [];
     session.reportedPartnerIds = [];
     session.activePartner = null;
@@ -1142,6 +1240,9 @@ function bindEvents() {
     session.accountabilityScore = 82;
     session.rescheduleIndex = 0;
     els.form.reset();
+    if (els.ageForm) els.ageForm.reset();
+    if (els.ageResultCard) els.ageResultCard.hidden = true;
+    clearAgeError();
     clearFieldErrors();
     syncRangeControls();
     els.nextWorkoutText.textContent =
