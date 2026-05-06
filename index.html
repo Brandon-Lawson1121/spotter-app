@@ -1,1264 +1,1656 @@
-/**
- * Spotter — prototype navigation & interactions
- * Profiles are generated forever (no fixed roster). Each connection keeps its own DM history in memory.
- */
+/* ============================================
+   Spotter — Base & resets
+   ============================================ */
 
-// -----------------------------------------------------------------------------
-// Data for procedural profiles (names & bio pieces—combine for variety)
-// -----------------------------------------------------------------------------
-const FIRST_MALE = [
-  "James", "Michael", "David", "Chris", "Ryan", "Daniel", "Matt", "Alex", "Jordan", "Sam",
-  "Tyler", "Brandon", "Eric", "Kevin", "Jason", "Marcus", "Devin", "Caleb", "Ethan", "Noah",
-  "Logan", "Dylan", "Aiden", "Luke", "Nathan", "Josh", "Ben", "Adam", "Derek", "Carter",
-  "Owen", "Sean", "Patrick", "Ravi", "Diego", "Malik", "Andre", "Isaiah", "Grant", "Hunter",
-  "Blake", "Colin", "Eric", "Jared", "Kyle", "Peter", "Travis", "Wesley", "Zach", "Connor",
-];
-
-const FIRST_FEMALE = [
-  "Emma", "Olivia", "Sophia", "Mia", "Ava", "Isabella", "Riley", "Taylor", "Casey", "Morgan",
-  "Quinn", "Alex", "Jamie", "Dana", "Rachel", "Nina", "Priya", "Ashley", "Holly", "Zoe",
-  "Lily", "Grace", "Chloe", "Anna", "Sara", "Kelly", "Jade", "Brooke", "Maya", "Elena",
-  "Vanessa", "Tara", "Kim", "Amy", "Brianna", "Crystal", "Deanna", "Faith", "Hailey", "Ivy",
-  "Jenna", "Kate", "Laura", "Melissa", "Nicole", "Paige", "Sierra", "Traci", "Yasmin", "Renee",
-];
-
-const LAST_INITIALS = "ABCDEFGHJKLMNPRSTVWYZ".split("");
-
-const GOAL_KEYS = ["lose weight", "build muscle", "improve endurance", "stay consistent"];
-const EXP_KEYS = ["beginner", "intermediate", "advanced"];
-const WORKOUT_KEYS = ["gym", "home", "running", "mixed"];
-const AVAIL_KEYS = ["mornings", "afternoons", "evenings", "flexible"];
-
-const BIO_OPEN = [
-  "I’m into realistic goals—nothing crash-course.",
-  "The gym used to intimidate me; I go at my own pace now.",
-  "I work weird hours sometimes, but I still try to move a few times a week.",
-  "Home workouts, gym, or a walk—I’m not picky as long as we check in.",
-  "I like accountability without the guilt trips.",
-  "Still figuring some of this out, and that’s okay.",
-  "Small wins matter more than perfect weeks, in my book.",
-  "If life gets busy, we reset—no drama.",
-];
-
-const BIO_MID = [
-  "Looking for someone who texts honest updates, not highlight reels.",
-  "Happy to share what’s worked for me without acting like an expert.",
-  "I’ll cheer for showing up tired, not just crushing PRs.",
-  "I prefer short sessions I can actually finish.",
-  "Rest days are part of the plan, not failure.",
-  "I care more about habits than six-packs.",
-  "We can laugh at the awkward gym moments together.",
-];
-
-const BIO_CLOSE = [
-  "Say hi if that vibe fits you.",
-  "Hope we can keep each other steady.",
-  "Here for kindness and consistency.",
-  "Let’s make this low-pressure and fun.",
-  "Rooting for you already.",
-];
-
-const FAKE_PARTNER_REPLIES = [
-  "Love that. I’m right here with you.",
-  "Yes—that’s the energy. One step at a time.",
-  "Ha, same. We’ve totally got this.",
-  "I’m proud of you for saying it out loud.",
-  "That’s real. Thanks for trusting me with that.",
-  "Solid. Want to pick a tiny goal for tomorrow?",
-  "Noted. No judgment ever—just teamwork.",
-  "Thanks for texting. That already counts.",
-  "Feel you. Want to shrink the plan a bit?",
-  "Heard. I’m cheering from the sidelines.",
-];
-
-// -----------------------------------------------------------------------------
-// Session state (in-memory only)
-// -----------------------------------------------------------------------------
-const session = {
-  user: {
-    name: "",
-    goal: "",
-    experience: "",
-    workoutType: "",
-    availability: "",
-    seeking: "",
-    newToFitness: false,
-    /** Max search radius (miles), 1–20 from preferences slider */
-    maxDistanceMiles: 10,
-    birthdate: "",
-    age: null,
-    minAge: 18,
-    maxAge: 50,
-  },
-  privacy: {
-    showDistance: true,
-    showAge: true,
-    showBirthday: false,
-    matchedOnly: true,
-    pausedDiscover: false,
-  },
-  blockedPartnerIds: [],
-  reportedPartnerIds: [],
-  activePartner: null,
-  workoutsThisWeek: 2,
-  weeklyGoal: 4,
-  streakDays: 3,
-  accountabilityScore: 82,
-  rescheduleIndex: 0,
-  swipeDeck: [],
-  dmThreads: [],
-  /** partner id -> [{ from: 'user' | O'partner', text }] */
-  chatMessagesByPartner: {},
-  /** Monotonic id suffix for generated profiles */
-  profileSerial: 0,
-  profilePage: 1,
-  editingProfile: false,
-};
-
-/** How many generated cards to keep ready in Discover */
-const SWIPE_DECK_TARGET = 16;
-const MINIMUM_AGE = 18;
-
-// -----------------------------------------------------------------------------
-// DOM references
-// -----------------------------------------------------------------------------
-const els = {
-  progressFill: document.getElementById("progress-fill"),
-  progressTrack: document.getElementById("progress-track"),
-  stepLabel: document.getElementById("step-label"),
-  flowHeader: document.querySelector(".flow-header"),
-  screens: {
-    welcome: document.getElementById("screen-welcome"),
-    age: document.getElementById("screen-age"),
-    preferences: document.getElementById("screen-preferences"),
-    main: document.getElementById("screen-main"),
-    chat: document.getElementById("screen-chat"),
-    progress: document.getElementById("screen-progress"),
-  },
-  form: document.getElementById("prefs-form"),
-  ageForm: document.getElementById("age-form"),
-  ageResultCard: document.getElementById("age-result-card"),
-  ageResultText: document.getElementById("age-result-text"),
-  chatLog: document.getElementById("chat-log"),
-  chatInput: document.getElementById("chat-input"),
-  nextWorkoutText: document.getElementById("next-workout-text"),
-  statStreak: document.getElementById("stat-streak"),
-  statWorkouts: document.getElementById("stat-workouts"),
-  statScore: document.getElementById("stat-score"),
-  progressSummary: document.getElementById("progress-summary"),
-  encouragementMsg: document.getElementById("encouragement-msg"),
-  panelSwipe: document.getElementById("panel-swipe"),
-  panelMessages: document.getElementById("panel-messages"),
-  panelProfile: document.getElementById("panel-profile"),
-  swipeCard: document.getElementById("swipe-card"),
-  swipeStage: document.getElementById("swipe-stage"),
-  swipeEmpty: document.getElementById("swipe-empty"),
-  swipeHelper: document.getElementById("swipe-helper"),
-  dmList: document.getElementById("dm-list"),
-  dmEmpty: document.getElementById("dm-empty"),
-  tabSwipeBtn: document.getElementById("tab-swipe-btn"),
-  tabMessagesBtn: document.getElementById("tab-messages-btn"),
-  tabProfileBtn: document.getElementById("tab-profile-btn"),
-  tabBadge: document.getElementById("tab-badge"),
-  darkModeToggle: document.getElementById("dark-mode-toggle"),
-  privacyDistanceToggle: document.getElementById("privacy-distance-toggle"),
-  privacyAgeToggle: document.getElementById("privacy-age-toggle"),
-  privacyBirthdayToggle: document.getElementById("privacy-birthday-toggle"),
-  ageVerificationStatus: document.getElementById("age-verification-status"),
-  profileAgeLine: document.getElementById("profile-age-line"),
-  privacyMatchesToggle: document.getElementById("privacy-matches-toggle"),
-  privacyPauseToggle: document.getElementById("privacy-pause-toggle"),
-  privacyStatus: document.getElementById("privacy-status"),
-  safetyFeedback: document.getElementById("safety-feedback"),
-};
-
-// -----------------------------------------------------------------------------
-// Random & generation
-// -----------------------------------------------------------------------------
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
-function calculateAgeFromBirthdate(birthdateValue) {
-  if (!birthdateValue) return null;
-  const dob = new Date(`${birthdateValue}T00:00:00`);
-  if (Number.isNaN(dob.getTime())) return null;
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const monthDiff = today.getMonth() - dob.getMonth();
-  const dayDiff = today.getDate() - dob.getDate();
-  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) age -= 1;
-  return age;
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-page);
 }
 
-function formatBirthdayForDisplay(birthdateValue) {
-  if (!birthdateValue) return "Not shown";
-  const dob = new Date(`${birthdateValue}T00:00:00`);
-  if (Number.isNaN(dob.getTime())) return "Not shown";
-  return dob.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+/* ============================================
+   CSS variables — wellness palette
+   ============================================ */
+
+:root {
+  --bg-page: #e8f2ef;
+  --bg-shell: #f7faf9;
+  --surface: #ffffff;
+  --text: #1a2f2a;
+  --text-muted: #4d6b63;
+  --accent: #2d7a6e;
+  --accent-hover: #24665c;
+  --accent-soft: #d4ebe6;
+  --border: #c5ddd6;
+  --shadow: 0 8px 28px rgba(26, 47, 42, 0.08);
+  --shadow-press: 0 4px 14px rgba(26, 47, 42, 0.1);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --danger: #b33a3a;
+  --chat-partner: #e3f0ed;
+  --chat-user: #d7eee9;
+  --focus-ring: 0 0 0 3px rgba(45, 122, 110, 0.35);
+  --transition: 0.22s ease;
 }
 
-function buildBio() {
-  return `${pick(BIO_OPEN)} ${pick(BIO_MID)} ${pick(BIO_CLOSE)}`;
+/* ============================================
+   App shell — phone-style container
+   ============================================ */
+
+.app-shell {
+  width: 100%;
+  max-width: 420px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background: var(--bg-shell);
+  box-shadow: var(--shadow);
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
-function buildAvatarDataUrl(initials, gender) {
-  const bg = gender === "female" ? "#d4ebe6" : "#b8dfd5";
-  const fg = "#2d7a6e";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="260" viewBox="0 0 420 260">
-    <rect width="420" height="260" fill="${bg}"/>
-    <circle cx="210" cy="96" r="48" fill="${fg}" opacity="0.28"/>
-    <path d="M118 232c12-60 54-92 92-92s80 32 92 92" fill="${fg}" opacity="0.32"/>
-    <text x="210" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="800" fill="${fg}">${initials}</text>
-  </svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-}
+@media (min-width: 480px) {
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 1.5rem 1rem 2rem;
+  }
 
-/** Random distance in miles, between 0.5 and cap (cap max 20). */
-function randomDistanceWithinCap(maxMi) {
-  const cap = Math.max(1, Math.min(20, Number(maxMi) || 20));
-  const lo = 0.5;
-  const hi = cap;
-  const v = lo + Math.random() * (hi - lo);
-  return Math.round(v * 10) / 10;
-}
-
-/** Human-readable “X mi away” for UI. */
-function formatMilesAway(miles) {
-  if (miles == null || Number.isNaN(Number(miles))) return "— mi away";
-  const m = Number(miles);
-  const shown = Number.isInteger(m) ? String(m) : m.toFixed(1);
-  return `${shown} mi away`;
-}
-
-/**
- * New random person respecting “who you want to pair with.”
- * Every call returns a unique id so history never collides.
- */
-function generateProfile() {
-  const seeking = session.user.seeking || "both";
-  let gender;
-  if (seeking === "male") gender = "male";
-  else if (seeking === "female") gender = "female";
-  else gender = Math.random() < 0.5 ? "male" : "female";
-
-  const firstPool = gender === "male" ? FIRST_MALE : FIRST_FEMALE;
-  const first = pick(firstPool);
-  const lastL = pick(LAST_INITIALS);
-  const displayName = `${first} ${lastL}.`;
-  const initials = (first.charAt(0) + lastL).toUpperCase();
-
-  session.profileSerial += 1;
-  const id = `spotter-${session.profileSerial}-${Date.now().toString(36)}`;
-
-  return {
-    id,
-    displayName,
-    initials,
-    gender,
-    age: randomInt(Math.min(session.user.minAge, session.user.maxAge), Math.max(session.user.minAge, session.user.maxAge)),
-    goal: pick(GOAL_KEYS),
-    experience: pick(EXP_KEYS),
-    workoutType: pick(WORKOUT_KEYS),
-    availability: pick(AVAIL_KEYS),
-    bio: buildBio(),
-    distanceMiles: randomDistanceWithinCap(session.user.maxDistanceMiles),
-    avatarUrl: buildAvatarDataUrl(initials, gender),
-  };
-}
-
-function topUpSwipeDeck() {
-  while (session.swipeDeck.length < SWIPE_DECK_TARGET) {
-    session.swipeDeck.push(generateProfile());
+  .app-shell {
+    min-height: min(860px, calc(100vh - 3rem));
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid var(--border);
   }
 }
 
-// -----------------------------------------------------------------------------
-// Screen navigation
-// -----------------------------------------------------------------------------
-function showScreen(screenKey) {
-  const stepMap = {
-    welcome: 1,
-    age: 2,
-    preferences: 3,
-    main: 4,
-    chat: 5,
-    progress: 6,
-  };
-  const totalSteps = 6;
-  const step = stepMap[screenKey] || 1;
-  const pct = (step / totalSteps) * 100;
+/* ============================================
+   Flow header & progress indicator
+   ============================================ */
 
-  Object.entries(els.screens).forEach(([key, el]) => {
-    if (!el) return;
-    if (key === screenKey) {
-      el.removeAttribute("hidden");
-      el.classList.add("screen--active");
-    } else {
-      el.setAttribute("hidden", "");
-      el.classList.remove("screen--active");
-    }
-  });
+.flow-header {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem 0.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
 
-  if (els.flowHeader) {
-    if (screenKey === "main") {
-      els.flowHeader.classList.add("flow-header--hub");
-    } else {
-      els.flowHeader.classList.remove("flow-header--hub");
-    }
+.flow-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.flow-header__brand {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.flow-header__step {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progress-track {
+  flex: 1;
+  height: 6px;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-track__fill {
+  height: 100%;
+  width: 20%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width var(--transition);
+}
+
+/* ============================================
+   Screens container & transitions
+   ============================================ */
+
+.screens {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.25rem 1rem 2rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(12px);
+  transition:
+    opacity var(--transition),
+    transform var(--transition),
+    visibility 0s linear 0.22s;
+}
+
+.screen--active {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition:
+    opacity var(--transition),
+    transform var(--transition),
+    visibility 0s;
+}
+
+.screen--active:not(.screen--main) {
+  overflow-y: auto;
+}
+
+.screen--main.screen--active {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen[hidden] {
+  display: none !important;
+}
+
+.screen__content {
+  max-width: 100%;
+}
+
+.screen__content--chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-bottom: 1rem;
+}
+
+/* ============================================
+   Typography — welcome & sections
+   ============================================ */
+
+.hero-badge {
+  font-size: 2.25rem;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-align: center;
+  color: var(--text);
+}
+
+.hero-tagline {
+  margin: 0.35rem 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--accent);
+}
+
+.hero-support {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.screen-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.screen-lead {
+  margin: 0 0 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.helper-text {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.helper-text--indent {
+  margin: -0.75rem 0 1rem;
+  padding-left: 0.25rem;
+}
+
+.microcopy {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.microcopy--muted {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Cards
+   ============================================ */
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(197, 221, 214, 0.6);
+}
+
+.card--compact {
+  padding: 0.75rem 1rem;
+}
+
+/* ============================================
+   Forms
+   ============================================ */
+
+.prefs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.field {
+  margin-bottom: 0.85rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--text);
+}
+
+.field input[type="text"],
+.field input[type="date"],
+.field select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.field input:focus,
+.field input[type="date"]:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.field--checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.field--checkbox input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+
+.label-inline {
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.field--slider {
+  margin-bottom: 1rem;
+}
+
+.field-slider__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.field-slider__head label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.field-slider__output {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.field--slider input[type="range"] {
+  width: 100%;
+  height: 8px;
+  margin: 0.35rem 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.field--slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-press);
+}
+
+.field--slider input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-press);
+  cursor: pointer;
+}
+
+.field-error {
+  min-height: 1.1rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--danger);
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.65rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow var(--transition),
+    background var(--transition),
+    color var(--transition);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-press);
+}
+
+.btn--primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+.btn--secondary:hover {
+  background: var(--accent-soft);
+}
+
+.btn--ghost {
+  background: var(--accent-soft);
+  color: var(--text);
+  border: 1px solid transparent;
+}
+
+.btn--ghost:hover {
+  background: #c5e4dc;
+}
+
+.btn--large {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+}
+
+.btn--small {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.btn-row--stack {
+  margin-top: 1.25rem;
+}
+
+/* ============================================
+   Match card
+   ============================================ */
+
+.match-card {
+  margin-top: 0.25rem;
+}
+
+.match-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--accent-soft), #b8dfd5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.match-name {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.match-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.match-details {
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.match-details__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.88rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--accent-soft);
+}
+
+.match-details__row:last-of-type {
+  border-bottom: none;
+}
+
+.match-details dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.match-details dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.match-bio {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.compat {
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.compat__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+
+.compat__label strong {
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.compat__bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.65rem;
+}
+
+.compat__bar-fill {
+  height: 100%;
+  width: 50%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width var(--transition);
+}
+
+.compat__why {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* ============================================
+   Chat UI
+   ============================================ */
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chat-header__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.chat-header__name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.chat-header__distance {
+  margin: 0.1rem 0 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.chat-header__status {
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: #3cb371;
+  border-radius: 50%;
+}
+
+.chat-log {
+  flex: 1;
+  min-height: 200px;
+  max-height: 42vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.chat-bubble {
+  max-width: 88%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.chat-bubble--partner {
+  align-self: flex-start;
+  background: var(--chat-partner);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble--user {
+  align-self: flex-end;
+  background: var(--chat-user);
+  color: var(--text);
+  border-bottom-right-radius: 4px;
+}
+
+.chat-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  padding: 0 0.2rem;
+}
+
+.chat-bubble--partner + .chat-meta {
+  align-self: flex-start;
+}
+
+.chat-bubble--user + .chat-meta {
+  align-self: flex-end;
+  text-align: right;
+}
+
+.next-workout__label {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.next-workout__title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.next-workout__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.quick-actions-label {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-footer-nav {
+  margin-top: 0.35rem;
+}
+
+.chat-footer-nav .btn {
+  width: 100%;
+}
+
+/* ============================================
+   Chat — compose (type your own message)
+   ============================================ */
+
+.chat-compose {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem !important;
+}
+
+.chat-compose__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.92rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.chat-compose__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.chat-compose__send {
+  flex-shrink: 0;
+  padding-left: 0.9rem !important;
+  padding-right: 0.9rem !important;
+  font-size: 0.85rem !important;
+}
+
+/* ============================================
+   Progress / stats
+   ============================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 360px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  if (els.progressFill) els.progressFill.style.width = `${pct}%`;
-  if (els.stepLabel) {
-    els.stepLabel.textContent = screenKey === "main" ? "Home" : `${step} / ${totalSteps}`;
-  }
-  if (els.progressTrack) {
-    els.progressTrack.setAttribute("aria-valuenow", String(step));
-    els.progressTrack.setAttribute(
-      "aria-valuetext",
-      screenKey === "main"
-        ? "Home: Discover and Messages"
-        : `Step ${step} of ${totalSteps}: ${titleCase(screenKey)}`,
-    );
-  }
-}
-
-function titleCase(key) {
-  if (key === "age") return "Age Verification";
-  return key.charAt(0).toUpperCase() + key.slice(1);
-}
-
-function displayGoalLabel(goal) {
-  if (!goal) return "";
-  return goal
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function displayWorkoutLabel(w) {
-  const labels = {
-    gym: "Gym",
-    home: "Home workouts",
-    running: "Running / Cardio",
-    mixed: "Mixed",
-  };
-  return labels[w] || w;
-}
-
-function displayExperience(e) {
-  if (!e) return "";
-  return e.charAt(0).toUpperCase() + e.slice(1);
-}
-
-function displayAvailability(a) {
-  if (!a) return "";
-  return a.charAt(0).toUpperCase() + a.slice(1);
-}
-
-// -----------------------------------------------------------------------------
-// Main app tabs: Discover vs Messages
-// -----------------------------------------------------------------------------
-function selectMainTab(tab) {
-  const isSwipe = tab === "swipe";
-  const isMessages = tab === "messages";
-  const isProfile = tab === "profile";
-
-  if (els.panelSwipe) {
-    els.panelSwipe.hidden = !isSwipe;
-    els.panelSwipe.classList.toggle("main-panel--active", isSwipe);
-  }
-  if (els.panelMessages) {
-    els.panelMessages.hidden = !isMessages;
-    els.panelMessages.classList.toggle("main-panel--active", isMessages);
-  }
-  if (els.panelProfile) {
-    els.panelProfile.hidden = !isProfile;
-    els.panelProfile.classList.toggle("main-panel--active", isProfile);
-  }
-
-  const buttons = [
-    [els.tabSwipeBtn, isSwipe],
-    [els.tabMessagesBtn, isMessages],
-    [els.tabProfileBtn, isProfile],
-  ];
-  buttons.forEach(([btn, active]) => {
-    if (!btn) return;
-    btn.classList.toggle("tab-bar__btn--active", active);
-    btn.setAttribute("aria-current", active ? "page" : "false");
-  });
-
-  if (isProfile) renderProfilePanel();
-}
-
-function renderProfilePanel() {
-  const name = session.user.name || "Your name";
-  const initials = name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "YO";
-  const profileName = document.getElementById("profile-name");
-  const profileMeta = document.getElementById("profile-meta");
-  const profileFilters = document.getElementById("profile-filters");
-  const profileAvatar = document.getElementById("profile-avatar");
-  if (profileName) profileName.textContent = name;
-  if (profileMeta) {
-    profileMeta.textContent = `${displayGoalLabel(session.user.goal)} · ${displayExperience(session.user.experience)} · ${displayAvailability(session.user.availability)}`;
-  }
-  if (els.profileAgeLine) {
-    const agePart = session.user.age ? `Age ${session.user.age}` : "Age not verified";
-    const birthdayPart = session.privacy.showBirthday && session.user.birthdate ? ` · Birthday: ${formatBirthdayForDisplay(session.user.birthdate)}` : "";
-    els.profileAgeLine.textContent = `${agePart}${birthdayPart}`;
-  }
-  if (profileFilters) {
-    const seekLabel = session.user.seeking === "both" ? "Anyone" : session.user.seeking === "male" ? "Men" : "Women";
-    const distText = session.privacy.showDistance ? `Within ${session.user.maxDistanceMiles} miles` : "Distance hidden";
-    const ageText = session.privacy.showAge ? `Ages ${session.user.minAge}-${session.user.maxAge}` : "Age hidden";
-    profileFilters.textContent = `Looking for: ${seekLabel} · ${ageText} · ${distText}`;
-  }
-  if (profileAvatar) profileAvatar.textContent = initials;
-  syncPrivacyControls();
-}
-
-function syncPrivacyControls() {
-  if (els.privacyDistanceToggle) els.privacyDistanceToggle.checked = session.privacy.showDistance;
-  if (els.privacyAgeToggle) els.privacyAgeToggle.checked = session.privacy.showAge;
-  if (els.privacyBirthdayToggle) els.privacyBirthdayToggle.checked = session.privacy.showBirthday;
-  if (els.privacyMatchesToggle) els.privacyMatchesToggle.checked = session.privacy.matchedOnly;
-  if (els.privacyPauseToggle) els.privacyPauseToggle.checked = session.privacy.pausedDiscover;
-  if (els.privacyStatus) {
-    const parts = [];
-    parts.push(session.privacy.showDistance ? "distance visible" : "distance hidden");
-    parts.push(session.privacy.showAge ? "age visible" : "age hidden");
-    parts.push(session.privacy.showBirthday ? "birthday visible" : "birthday hidden");
-    parts.push(session.privacy.matchedOnly ? "matched-only messages" : "open messages");
-    if (session.privacy.pausedDiscover) parts.push("profile paused");
-    els.privacyStatus.textContent = `Current privacy: ${parts.join(" · ")}.`;
-  }
-  if (els.ageVerificationStatus) {
-    const ageText = session.user.age ? `Verified age: ${session.user.age}.` : "Age not verified yet.";
-    const birthdayText = session.privacy.showBirthday && session.user.birthdate
-      ? ` Birthday visible as ${formatBirthdayForDisplay(session.user.birthdate)}.`
-      : " Birthday hidden.";
-    els.ageVerificationStatus.textContent = `${ageText}${birthdayText}`;
-  }
-}
-
-function readPrivacyControls() {
-  if (els.privacyDistanceToggle) session.privacy.showDistance = els.privacyDistanceToggle.checked;
-  if (els.privacyAgeToggle) session.privacy.showAge = els.privacyAgeToggle.checked;
-  if (els.privacyBirthdayToggle) session.privacy.showBirthday = els.privacyBirthdayToggle.checked;
-  if (els.privacyMatchesToggle) session.privacy.matchedOnly = els.privacyMatchesToggle.checked;
-  if (els.privacyPauseToggle) session.privacy.pausedDiscover = els.privacyPauseToggle.checked;
-  syncPrivacyControls();
-  renderProfilePanel();
-}
-
-// -----------------------------------------------------------------------------
-// Swipe deck (Discover tab)
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// Swipe deck (Discover tab)
-// -----------------------------------------------------------------------------
-const SWIPE_THRESHOLD = 95;
-let swipePointerId = null;
-let swipeDrag = { startX: 0, startY: 0, active: false, target: null };
-
-function initSwipeDeck() {
-  session.swipeDeck = [];
-  topUpSwipeDeck();
-  renderSwipeCard();
-}
-
-function fillSwipeCardEl(profile) {
-  const avatar = document.getElementById("swipe-card-avatar");
-  avatar.textContent = profile.initials;
-  avatar.style.backgroundImage = profile.avatarUrl || "";
-  avatar.dataset.photo = profile.avatarUrl ? "true" : "false";
-  document.getElementById("swipe-card-name").textContent = profile.displayName;
-  document.getElementById("swipe-card-age").textContent = String(profile.age);
-  const tags = `${displayExperience(profile.experience)} · ${displayAvailability(profile.availability)} · ${displayWorkoutLabel(profile.workoutType)}`;
-  document.getElementById("swipe-card-tags").textContent = tags;
-  document.getElementById("swipe-card-bio").textContent = profile.bio;
-  const distEl = document.getElementById("swipe-card-distance");
-  if (distEl) distEl.textContent = formatMilesAway(profile.distanceMiles);
-}
-
-function setSwipeStamps(dx) {
-  const pass = document.getElementById("swipe-stamp-pass");
-  const conn = document.getElementById("swipe-stamp-connect");
-  if (!pass || !conn || !els.swipeCard) return;
-
-  const showPass = dx < -40;
-  const showConn = dx > 40;
-  const passOpacity = showPass ? Math.min(1, Math.abs(dx) / 120) : 0;
-  const connOpacity = showConn ? Math.min(1, dx / 120) : 0;
-
-  pass.style.opacity = passOpacity;
-  conn.style.opacity = connOpacity;
-
-  els.swipeCard.classList.toggle("swipe-card--preview-pass", showPass);
-  els.swipeCard.classList.toggle("swipe-card--preview-connect", showConn);
-}
-
-function applySwipeTransform(dx, rotationFactor) {
-  if (!els.swipeCard) return;
-  const rot = rotationFactor * 0.08;
-  els.swipeCard.style.transform = `translateX(${dx}px) rotate(${rot}deg)`;
-}
-
-function resetSwipeCardVisual() {
-  if (!els.swipeCard) return;
-  els.swipeCard.style.transform = "";
-  els.swipeCard.classList.remove(
-    "swipe-card--fly-left",
-    "swipe-card--fly-right",
-    "swipe-card--preview-pass",
-    "swipe-card--preview-connect",
-  );
-  setSwipeStamps(0);
-}
-
-function renderSwipeCard() {
-  resetSwipeCardVisual();
-  topUpSwipeDeck();
-  const hasCards = session.swipeDeck.length > 0;
-  if (els.swipeStage) els.swipeStage.hidden = !hasCards;
-  if (els.swipeEmpty) els.swipeEmpty.hidden = hasCards;
-  if (els.swipeHelper) els.swipeHelper.hidden = !hasCards;
-  if (!hasCards || !els.swipeCard) return;
-  fillSwipeCardEl(session.swipeDeck[0]);
-}
-
-function completeSwipe(direction) {
-  if (!session.swipeDeck.length || !els.swipeCard) return;
-  const profile = session.swipeDeck.shift();
-  if (direction === "right") {
-    upsertDmThread(profile, "You teamed up—tap to chat", false);
-  }
-
-  const isConnect = direction === "right";
-  els.swipeCard.classList.toggle("swipe-card--preview-connect", isConnect);
-  els.swipeCard.classList.toggle("swipe-card--preview-pass", !isConnect);
-  setSwipeStamps(isConnect ? 120 : -120);
-
-  window.setTimeout(() => {
-    els.swipeCard.classList.add(isConnect ? "swipe-card--fly-right" : "swipe-card--fly-left");
-  }, 180);
-
-  window.setTimeout(() => {
-    els.swipeCard.classList.remove(
-      "swipe-card--fly-right",
-      "swipe-card--fly-left",
-      "swipe-card--preview-pass",
-      "swipe-card--preview-connect",
-    );
-    topUpSwipeDeck();
-    renderSwipeCard();
-  }, 520);
-}
-
-function onSwipePointerDown(e) {
-  if (!session.swipeDeck.length) return;
-  if (e.button !== undefined && e.button !== 0) return;
-  if (e.target.closest("button, input, select, textarea, a")) return;
-  swipeDrag.active = true;
-  swipeDrag.startX = e.clientX;
-  swipeDrag.startY = e.clientY;
-  swipeDrag.target = e.currentTarget;
-  swipePointerId = e.pointerId;
-  if (swipeDrag.target && swipeDrag.target.setPointerCapture) {
-    swipeDrag.target.setPointerCapture(e.pointerId);
-  }
-}
-
-function onSwipePointerMove(e) {
-  if (!swipeDrag.active || e.pointerId !== swipePointerId) return;
-  const dx = e.clientX - swipeDrag.startX;
-  applySwipeTransform(dx, dx);
-  setSwipeStamps(dx);
-}
-
-function onSwipePointerUp(e) {
-  if (!swipeDrag.active || e.pointerId !== swipePointerId) return;
-  swipeDrag.active = false;
-  try {
-    if (swipeDrag.target && swipeDrag.target.releasePointerCapture) {
-      swipeDrag.target.releasePointerCapture(swipePointerId);
-    }
-  } catch {
-    /* ignore */
-  }
-  swipePointerId = null;
-  swipeDrag.target = null;
-  const dx = e.clientX - swipeDrag.startX;
-  if (dx > SWIPE_THRESHOLD) {
-    completeSwipe("right");
-  } else if (dx < -SWIPE_THRESHOLD) {
-    completeSwipe("left");
-  } else {
-    resetSwipeCardVisual();
-  }
-}
-
-function bindSwipeGestures() {
-  const swipeSurface = els.panelSwipe || els.swipeStage || els.swipeCard;
-  if (!swipeSurface) return;
-  swipeSurface.addEventListener("pointerdown", onSwipePointerDown);
-  swipeSurface.addEventListener("pointermove", onSwipePointerMove);
-  swipeSurface.addEventListener("pointerup", onSwipePointerUp);
-  swipeSurface.addEventListener("pointercancel", onSwipePointerUp);
-}
-
-// -----------------------------------------------------------------------------
-// DM threads & list
-// -----------------------------------------------------------------------------
-function upsertDmThread(profile, lastMessage, unread) {
-  const idx = session.dmThreads.findIndex((t) => t.profile.id === profile.id);
-  if (idx >= 0) {
-    session.dmThreads.splice(idx, 1);
-  }
-  session.dmThreads.unshift({
-    profile,
-    lastMessage,
-    time: "Just now",
-    unread: !!unread,
-  });
-  renderDmList();
-  updateTabBadge();
-}
-
-function updateTabBadge() {
-  const n = session.dmThreads.filter((t) => t.unread).length;
-  if (!els.tabBadge) return;
-  if (n > 0) {
-    els.tabBadge.hidden = false;
-    els.tabBadge.textContent = String(n);
-  } else {
-    els.tabBadge.hidden = true;
-  }
-}
-
-function renderDmList() {
-  if (!els.dmList || !els.dmEmpty) return;
-  els.dmList.innerHTML = "";
-  if (session.dmThreads.length === 0) {
-    els.dmEmpty.hidden = false;
-    return;
-  }
-  els.dmEmpty.hidden = true;
-  session.dmThreads.filter((thread) => !session.blockedPartnerIds.includes(thread.profile.id)).forEach((thread) => {
-    const li = document.createElement("li");
-    li.className = "dm-row" + (thread.unread ? " dm-row--unread" : "");
-
-    const av = document.createElement("div");
-    av.className = "dm-row__avatar";
-    av.setAttribute("aria-hidden", "true");
-    av.textContent = thread.profile.initials;
-
-    const body = document.createElement("div");
-    body.className = "dm-row__body";
-    const top = document.createElement("div");
-    top.className = "dm-row__top";
-    const nameEl = document.createElement("span");
-    nameEl.className = "dm-row__name";
-    nameEl.textContent = thread.profile.displayName;
-    const timeEl = document.createElement("span");
-    timeEl.className = "dm-row__time";
-    timeEl.textContent = thread.time;
-    top.appendChild(nameEl);
-    top.appendChild(timeEl);
-    const dist = document.createElement("p");
-    dist.className = "dm-row__distance";
-    dist.textContent = formatMilesAway(thread.profile.distanceMiles);
-    const prev = document.createElement("p");
-    prev.className = "dm-row__preview";
-    prev.textContent = thread.lastMessage;
-    body.appendChild(top);
-    body.appendChild(dist);
-    body.appendChild(prev);
-    li.appendChild(av);
-    li.appendChild(body);
-    li.addEventListener("click", () => openChatWith(thread.profile));
-    els.dmList.appendChild(li);
-  });
-}
-
-function enterMainApp() {
-  session.dmThreads = [];
-  session.chatMessagesByPartner = {};
-  session.blockedPartnerIds = [];
-  session.reportedPartnerIds = [];
-  session.profileSerial = 0;
-  session.profilePage = 1;
-  session.swipeDeck = [];
-  initSwipeDeck();
-  renderDmList();
-  updateTabBadge();
-  selectMainTab("swipe");
-  showScreen("main");
-}
-
-// -----------------------------------------------------------------------------
-// Initial age verification
-// -----------------------------------------------------------------------------
-function clearAgeError() {
-  const err = document.getElementById("error-birthdate");
-  if (err) err.textContent = "";
-}
-
-function validateInitialAge() {
-  clearAgeError();
-  const birthdateEl = document.getElementById("birthdate");
-  const birthdate = birthdateEl ? birthdateEl.value : "";
-  const verifiedAge = calculateAgeFromBirthdate(birthdate);
-
-  if (verifiedAge === null) {
-    const err = document.getElementById("error-birthdate");
-    if (err) err.textContent = "Please enter your birthday first.";
-    return false;
-  }
-
-  if (verifiedAge < MINIMUM_AGE) {
-    const err = document.getElementById("error-birthdate");
-    if (err) err.textContent = `You must be ${MINIMUM_AGE} or older to use Spotter.`;
-    if (els.ageResultCard) els.ageResultCard.hidden = false;
-    if (els.ageResultText) els.ageResultText.textContent = `You are ${verifiedAge}. Spotter is locked until you meet the age requirement.`;
-    return false;
-  }
-
-  session.user.birthdate = birthdate;
-  session.user.age = verifiedAge;
-  if (els.ageResultCard) els.ageResultCard.hidden = false;
-  if (els.ageResultText) els.ageResultText.textContent = `Verified: you are ${verifiedAge}.`;
-  return true;
-}
-
-// -----------------------------------------------------------------------------
-// Form validation
-// -----------------------------------------------------------------------------
-function clearFieldErrors() {
-  ["name", "goal", "experience", "workout", "availability", "seeking", "age"].forEach((suffix) => {
-    const err = document.getElementById(`error-${suffix === "workout" ? "workout" : suffix}`);
-    if (err) err.textContent = "";
-  });
-}
-
-function validatePrefsForm() {
-  clearFieldErrors();
-  let ok = true;
-  const goal = document.getElementById("goal").value;
-  const name = document.getElementById("user-name").value.trim();
-  const experience = document.getElementById("experience").value;
-  const workout = document.getElementById("workout-type").value;
-  const availability = document.getElementById("availability").value;
-  const seeking = document.getElementById("seeking").value;
-  const minAge = Number(document.getElementById("min-age").value);
-  const maxAge = Number(document.getElementById("max-age").value);
-
-
-  if (name.length < 2) {
-    document.getElementById("error-name").textContent = "Please enter at least 2 characters.";
-    ok = false;
-  }
-  if (!goal) {
-    document.getElementById("error-goal").textContent = "Choose a goal so we can help.";
-    ok = false;
-  }
-  if (!experience) {
-    document.getElementById("error-experience").textContent = "Select the level that feels closest.";
-    ok = false;
-  }
-  if (!workout) {
-    document.getElementById("error-workout").textContent = "Let us know where you like to move.";
-    ok = false;
-  }
-  if (!availability) {
-    document.getElementById("error-availability").textContent = "When works best on most weeks?";
-    ok = false;
-  }
-  if (!seeking) {
-    document.getElementById("error-seeking").textContent = "Pick who you’d like to be paired with.";
-    ok = false;
-  }
-  if (minAge > maxAge) {
-    document.getElementById("error-age").textContent = "Minimum age cannot be higher than maximum age.";
-    ok = false;
-  }
-
-  return ok;
-}
-
-function readFormIntoSession() {
-  session.user.name = document.getElementById("user-name").value.trim();
-  session.user.goal = document.getElementById("goal").value;
-  session.user.experience = document.getElementById("experience").value;
-  session.user.workoutType = document.getElementById("workout-type").value;
-  session.user.availability = document.getElementById("availability").value;
-  session.user.seeking = document.getElementById("seeking").value;
-  session.user.minAge = Number(document.getElementById("min-age").value) || 18;
-  session.user.maxAge = Number(document.getElementById("max-age").value) || 40;
-  session.user.newToFitness = document.getElementById("new-to-fitnessToggle").checked;
-  const distEl = document.getElementById("max-distance");
-  const raw = distEl ? parseInt(distEl.value, 10) : 10;
-  session.user.maxDistanceMiles = Math.max(1, Math.min(20, Number.isFinite(raw) ? raw : 10));
-}
-
-// -----------------------------------------------------------------------------
-// Chat: stored messages per partner + UI
-// -----------------------------------------------------------------------------
-function partnerDisplayName() {
-  return session.activePartner ? session.activePartner.displayName : "Your partner";
-}
-
-function getPartnerMessages(profileId) {
-  if (!session.chatMessagesByPartner[profileId]) {
-    session.chatMessagesByPartner[profileId] = [];
-  }
-  return session.chatMessagesByPartner[profileId];
-}
-
-function syncThreadPreview(profileId, lastRaw) {
-  const preview = lastRaw.length > 96 ? lastRaw.slice(0, 93) + "…" : lastRaw;
-  const idx = session.dmThreads.findIndex((x) => x.profile.id === profileId);
-  if (idx === -1) return;
-  const t = session.dmThreads[idx];
-  t.lastMessage = preview;
-  t.time = "Just now";
-  if (idx > 0) {
-    session.dmThreads.splice(idx, 1);
-    session.dmThreads.unshift(t);
-  }
-  renderDmList();
-  updateTabBadge();
-}
-
-function addBubbleToDom(text, from, partnerDisplay) {
-  const bubble = document.createElement("div");
-  bubble.className = `chat-bubble chat-bubble--${from}`;
-  bubble.textContent = text;
-  const meta = document.createElement("div");
-  meta.className = "chat-meta";
-  meta.textContent = from === "partner" ? partnerDisplay : "You";
-  els.chatLog.appendChild(bubble);
-  els.chatLog.appendChild(meta);
-  els.chatLog.scrollTop = els.chatLog.scrollHeight;
-}
-
-/** Append one message: save + paint + refresh DM preview line */
-function appendChatBubble(text, from) {
-  if (!session.activePartner) return;
-  const profile = session.activePartner;
-  const pid = profile.id;
-  getPartnerMessages(pid).push({ from, text });
-  addBubbleToDom(text, from, profile.displayName);
-  syncThreadPreview(pid, text);
-}
-
-function paintChatHistory(profile) {
-  els.chatLog.innerHTML = "";
-  getPartnerMessages(profile.id).forEach(({ from, text }) => {
-    addBubbleToDom(text, from, profile.displayName);
-  });
-  els.chatLog.scrollTop = els.chatLog.scrollHeight;
-}
-
-function seedInitialChatForPartner(profile) {
-  const userFirst = session.user.name ? session.user.name.split(" ")[0] : "there";
-  const partnerFirst = profile.displayName.split(" ")[0];
-  const lines = [
-    {
-      from: "partner",
-      text: `Hey ${userFirst}! Glad you matched—I’m ${partnerFirst}. I’m here for low-pressure accountability.`,
-    },
-    {
-      from: "user",
-      text: "Thanks! Trying to stay consistent without burning out.",
-    },
-    {
-      from: "partner",
-      text: "That’s the sweet spot. Want to pick one tiny check-in this week—like a text after you move?",
-    },
-  ];
-  const store = getPartnerMessages(profile.id);
-  store.length = 0;
-  lines.forEach(({ from, text }) => store.push({ from, text }));
-  paintChatHistory(profile);
-  syncThreadPreview(profile.id, lines[lines.length - 1].text);
-}
-
-function updateChatHeader() {
-  const p = session.activePartner;
-  if (!p) return;
-  document.getElementById("chat-partner-name").textContent = p.displayName;
-  document.getElementById("chat-partner-initials").textContent = p.initials;
-  const distHd = document.getElementById("chat-partner-distance");
-  if (distHd) distHd.textContent = formatMilesAway(p.distanceMiles);
-}
-
-function openChatWith(profile) {
-  session.activePartner = profile;
-  updateChatHeader();
-  const thread = session.dmThreads.find((t) => t.profile.id === profile.id);
-  if (thread) thread.unread = false;
-  renderDmList();
-  updateTabBadge();
-
-  if (getPartnerMessages(profile.id).length === 0) {
-    seedInitialChatForPartner(profile);
-  } else {
-    paintChatHistory(profile);
-  }
-
-  if (els.chatInput) {
-    els.chatInput.value = "";
-  }
-  showScreen("chat");
-}
-
-/** After you send a solo message, partner “types back” (demo). */
-function scheduleFakePartnerReply(partnerId) {
-  const delay = 650 + Math.random() * 1100;
-  window.setTimeout(() => {
-    if (!session.activePartner || session.activePartner.id !== partnerId) return;
-    appendChatBubble(pick(FAKE_PARTNER_REPLIES), "partner");
-  }, delay);
-}
-
-// -----------------------------------------------------------------------------
-// Safety: report and block
-// -----------------------------------------------------------------------------
-function reportActivePartner() {
-  if (!session.activePartner) return;
-  const id = session.activePartner.id;
-  if (!session.reportedPartnerIds.includes(id)) session.reportedPartnerIds.push(id);
-  if (els.safetyFeedback) {
-    els.safetyFeedback.textContent = `${session.activePartner.displayName} was reported in this demo. A real app would send this to moderation review.`;
-  }
-}
-
-function blockActivePartner() {
-  if (!session.activePartner) return;
-  const blocked = session.activePartner;
-  if (!session.blockedPartnerIds.includes(blocked.id)) session.blockedPartnerIds.push(blocked.id);
-  session.dmThreads = session.dmThreads.filter((thread) => thread.profile.id !== blocked.id);
-  delete session.chatMessagesByPartner[blocked.id];
-  renderDmList();
-  updateTabBadge();
-  session.activePartner = null;
-  showScreen("main");
-  selectMainTab("messages");
-  if (els.dmEmpty) {
-    els.dmEmpty.hidden = session.dmThreads.length > 0;
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Quick actions: motivation & reschedule
-// -----------------------------------------------------------------------------
-const MOTIVATION_LINES = [
-  "You’ve already done the brave part by showing up today. One small step is enough.",
-  "Remember: consistency beats intensity. I’m proud of you for staying in the conversation.",
-  "It’s okay if today feels heavy. We can shrink the plan—something gentle still counts.",
-  "Progress isn’t linear. If you miss a workout, we simply pick the next doable moment.",
-  "You don’t need to prove anything to anyone here. I’m on your side.",
-];
-
-const RESCHEDULE_OPTIONS = [
-  "Easy 20-minute mobility · Day after tomorrow 6:15 PM",
-  "Walk or light jog 15 minutes · This Saturday 9:00 AM",
-  "Home bodyweight circuit (two rounds) · Tomorrow lunch break",
-  "Recovery stretch playlist · Tonight 8:00 PM—only if you feel up for it",
-];
-
-function randomMotivation() {
-  return MOTIVATION_LINES[Math.floor(Math.random() * MOTIVATION_LINES.length)];
-}
-
-// -----------------------------------------------------------------------------
-// Progress screen
-// -----------------------------------------------------------------------------
-function syncProgressUI() {
-  els.statStreak.textContent = `${session.streakDays} day${session.streakDays === 1 ? "" : "s"}`;
-  els.statWorkouts.textContent = `${session.workoutsThisWeek} / ${session.weeklyGoal}`;
-  els.statScore.textContent = `${session.accountabilityScore}%`;
-
-  const name = session.user.name ? session.user.name.split(" ")[0] : "You";
-  els.progressSummary.textContent = `${name}, you’ve checked in regularly with ${partnerDisplayName()}. That steady rhythm builds trust—and habits.`;
-
-  if (session.workoutsThisWeek >= session.weeklyGoal) {
-    els.encouragementMsg.textContent =
-      "You hit your weekly target in this demo. In real life, we’d celebrate—and set a kind plan for next week.";
-  } else if (session.workoutsThisWeek <= 1) {
-    els.encouragementMsg.textContent =
-      "Early days are the hardest. Be gentle with yourself; showing up here is already momentum.";
-  } else {
-    els.encouragementMsg.textContent =
-      "You’re in a healthy middle zone—keep leaning on small wins. They add up faster than it feels.";
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Profile editing and preference controls
-// -----------------------------------------------------------------------------
-function populateFormFromSession() {
-  const mappings = [
-    ["user-name", session.user.name],
-    ["goal", session.user.goal],
-    ["experience", session.user.experience],
-    ["workout-type", session.user.workoutType],
-    ["availability", session.user.availability],
-    ["seeking", session.user.seeking],
-    ["min-age", session.user.minAge],
-    ["max-age", session.user.maxAge],
-    ["max-distance", session.user.maxDistanceMiles],
-  ];
-  mappings.forEach(([id, value]) => {
-    const el = document.getElementById(id);
-    if (el && value !== undefined && value !== null) el.value = String(value);
-  });
-  const newbie = document.getElementById("new-to-fitnessToggle");
-  if (newbie) newbie.checked = !!session.user.newToFitness;
-  syncRangeControls();
-}
-
-function syncRangeControls() {
-  const minAge = document.getElementById("min-age");
-  const maxAge = document.getElementById("max-age");
-  const ageOut = document.getElementById("age-range-value");
-  if (minAge && maxAge && ageOut) {
-    let min = Number(minAge.value);
-    let max = Number(maxAge.value);
-    if (min > max) {
-      if (document.activeElement === minAge) maxAge.value = String(min);
-      else minAge.value = String(max);
-      min = Number(minAge.value);
-      max = Number(maxAge.value);
-    }
-    ageOut.textContent = `${min}–${max}`;
-    minAge.setAttribute("aria-valuenow", String(min));
-    maxAge.setAttribute("aria-valuenow", String(max));
-  }
-
-  const distSlider = document.getElementById("max-distance");
-  const distOut = document.getElementById("distance-value");
-  if (distSlider && distOut) {
-    distOut.textContent = distSlider.value;
-    distSlider.setAttribute("aria-valuenow", distSlider.value);
+  .stat-card--wide {
+    grid-column: span 2;
   }
 }
 
-// -----------------------------------------------------------------------------
-// Event bindings
-// -----------------------------------------------------------------------------
-function bindEvents() {
-  ["max-distance", "min-age", "max-age"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("input", syncRangeControls);
-  });
-  syncRangeControls();
-
-  document.getElementById("btn-get-started").addEventListener("click", () => {
-    session.editingProfile = false;
-    const submitBtn = document.getElementById("btn-find-match");
-    if (submitBtn) submitBtn.textContent = "Start discovering";
-    showScreen("age");
-  });
-
-  if (els.ageForm) {
-    els.ageForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!validateInitialAge()) return;
-      showScreen("preferences");
-    });
-  }
-
-  els.form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (!session.user.age || session.user.age < MINIMUM_AGE) {
-      showScreen("age");
-      return;
-    }
-    if (!validatePrefsForm()) return;
-    readFormIntoSession();
-    if (session.editingProfile) {
-      session.swipeDeck = [];
-      topUpSwipeDeck();
-      renderSwipeCard();
-      renderProfilePanel();
-      selectMainTab("profile");
-      showScreen("main");
-      session.editingProfile = false;
-      const submitBtn = document.getElementById("btn-find-match");
-      if (submitBtn) submitBtn.textContent = "Start discovering";
-    } else {
-      enterMainApp();
-    }
-  });
-
-  if (els.tabSwipeBtn) els.tabSwipeBtn.addEventListener("click", () => selectMainTab("swipe"));
-  if (els.tabMessagesBtn) els.tabMessagesBtn.addEventListener("click", () => selectMainTab("messages"));
-  if (els.tabProfileBtn) els.tabProfileBtn.addEventListener("click", () => selectMainTab("profile"));
-  const btnEditProfile = document.getElementById("btn-edit-profile");
-  if (btnEditProfile) btnEditProfile.addEventListener("click", () => {
-    session.editingProfile = true;
-    populateFormFromSession();
-    const submitBtn = document.getElementById("btn-find-match");
-    if (submitBtn) submitBtn.textContent = "Save profile changes";
-    showScreen("preferences");
-  });
-  if (els.darkModeToggle) {
-    els.darkModeToggle.addEventListener("change", () => {
-      document.body.classList.toggle("dark-mode", els.darkModeToggle.checked);
-    });
-  }
-
-  [els.privacyDistanceToggle, els.privacyAgeToggle, els.privacyBirthdayToggle, els.privacyMatchesToggle, els.privacyPauseToggle].forEach((toggle) => {
-    if (toggle) toggle.addEventListener("change", readPrivacyControls);
-  });
-  syncPrivacyControls();
-
-
-  document.getElementById("btn-swipe-pass").addEventListener("click", () => {
-    if (session.swipeDeck.length) completeSwipe("left");
-  });
-  document.getElementById("btn-swipe-connect").addEventListener("click", () => {
-    if (session.swipeDeck.length) completeSwipe("right");
-  });
-  document.getElementById("btn-swipe-reset").addEventListener("click", () => {
-    session.profilePage += 1;
-    session.swipeDeck = [];
-    topUpSwipeDeck();
-    renderSwipeCard();
-  });
-
-  document.getElementById("btn-chat-back").addEventListener("click", () => {
-    showScreen("main");
-    selectMainTab("messages");
-  });
-
-  function sendTypedMessage() {
-    if (!els.chatInput || !session.activePartner) return;
-    const text = els.chatInput.value.trim();
-    if (!text) return;
-    appendChatBubble(text, "user");
-    els.chatInput.value = "";
-    scheduleFakePartnerReply(session.activePartner.id);
-  }
-
-  const btnSend = document.getElementById("btn-chat-send");
-  if (btnSend) {
-    btnSend.addEventListener("click", sendTypedMessage);
-  }
-  if (els.chatInput) {
-    els.chatInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendTypedMessage();
-      }
-    });
-  }
-
-  document.getElementById("btn-worked-out").addEventListener("click", () => {
-    appendChatBubble("I got my workout in today ✅", "user");
-    appendChatBubble("Love that! That’s real follow-through. How did your body feel afterward?", "partner");
-    if (session.workoutsThisWeek < session.weeklyGoal) {
-      session.workoutsThisWeek += 1;
-    }
-    if (session.workoutsThisWeek >= 3) {
-      session.streakDays = Math.min(session.streakDays + 1, 7);
-    }
-    session.accountabilityScore = Math.min(99, session.accountabilityScore + 2);
-  });
-
-  document.getElementById("btn-motivation").addEventListener("click", () => {
-    appendChatBubble("Could use a little pep talk—having a slow day.", "user");
-    appendChatBubble(randomMotivation(), "partner");
-  });
-
-  document.getElementById("btn-reschedule").addEventListener("click", () => {
-    session.rescheduleIndex =
-      (session.rescheduleIndex + 1) % RESCHEDULE_OPTIONS.length;
-    const next = RESCHEDULE_OPTIONS[session.rescheduleIndex];
-    els.nextWorkoutText.textContent = next;
-    appendChatBubble("I might need to move our plan—is that okay?", "user");
-    appendChatBubble(
-      "Of course. Life happens. Let’s use this updated time—no stress, we’ll text a quick check-in before.",
-      "partner",
-    );
-  });
-
-  const btnReportUser = document.getElementById("btn-report-user");
-  if (btnReportUser) btnReportUser.addEventListener("click", reportActivePartner);
-
-  const btnBlockUser = document.getElementById("btn-block-user");
-  if (btnBlockUser) btnBlockUser.addEventListener("click", blockActivePartner);
-
-  document.getElementById("btn-to-progress").addEventListener("click", () => {
-    syncProgressUI();
-    showScreen("progress");
-  });
-
-  document.getElementById("btn-back-chat").addEventListener("click", () => {
-    showScreen("chat");
-  });
-
-  document.getElementById("btn-restart").addEventListener("click", () => {
-    session.user = {
-      name: "",
-      goal: "",
-      experience: "",
-      workoutType: "",
-      availability: "",
-      seeking: "",
-      newToFitness: false,
-      maxDistanceMiles: 10,
-      birthdate: "",
-      age: null,
-      minAge: 18,
-      maxAge: 50,
-    };
-    session.privacy = { showDistance: true, showAge: true, showBirthday: false, matchedOnly: true, pausedDiscover: false };
-    session.blockedPartnerIds = [];
-    session.reportedPartnerIds = [];
-    session.activePartner = null;
-    session.swipeDeck = [];
-    session.dmThreads = [];
-    session.chatMessagesByPartner = {};
-    session.profileSerial = 0;
-    session.profilePage = 1;
-    session.workoutsThisWeek = 2;
-    session.weeklyGoal = 4;
-    session.streakDays = 3;
-    session.accountabilityScore = 82;
-    session.rescheduleIndex = 0;
-    els.form.reset();
-    if (els.ageForm) els.ageForm.reset();
-    if (els.ageResultCard) els.ageResultCard.hidden = true;
-    clearAgeError();
-    clearFieldErrors();
-    syncRangeControls();
-    els.nextWorkoutText.textContent =
-      "Light 25-minute walk or stretch · Tomorrow 7:30 AM";
-    showScreen("welcome");
-  });
-
-  bindSwipeGestures();
+.stat-card__label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-// -----------------------------------------------------------------------------
-// Init
-// -----------------------------------------------------------------------------
-function init() {
-  bindEvents();
-  showScreen("welcome");
+.stat-card__value {
+  margin: 0.35rem 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
 }
 
-init();
+.stat-card__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.summary-card__title {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.summary-card__text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.encouragement {
+  margin: 1rem 0 0;
+  padding: 0.9rem;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ============================================
+   Hub header (Discover / Messages home)
+   ============================================ */
+
+.flow-header--hub .progress-track {
+  opacity: 0.65;
+}
+
+/* ============================================
+   Main hub — tab panels & bottom bar
+   ============================================ */
+
+.main-panels {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.main-panel {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.main-panel[hidden] {
+  display: none !important;
+}
+
+.main-panel > .screen__content {
+  padding: 1.25rem 1rem 1rem;
+}
+
+.screen__content--swipe {
+  padding: 1rem 1rem 0.5rem;
+  min-height: 100%;
+}
+
+.swipe-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.swipe-sub {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.swipe-stage {
+  position: relative;
+  min-height: 340px;
+  margin-bottom: 0.75rem;
+  touch-action: none;
+}
+
+.swipe-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-width: 340px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 36px rgba(26, 47, 42, 0.12);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: grab;
+  transition: transform 0.2s ease, box-shadow var(--transition);
+  user-select: none;
+}
+
+.swipe-card:active {
+  cursor: grabbing;
+}
+
+.swipe-card__photo,
+.swipe-card__body {
+  pointer-events: none;
+}
+
+.swipe-card__photo {
+  height: 120px;
+  background: linear-gradient(155deg, var(--accent-soft), #a8d4c8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.05em;
+}
+
+.swipe-card__body {
+  padding: 1rem 1.05rem 1.15rem;
+}
+
+.swipe-card__name-line {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.swipe-card__distance {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.swipe-card__tags {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.swipe-card__bio {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.swipe-card__labels {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.swipe-card__stamp {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  padding: 0.4rem 0.6rem;
+  border: 3px solid;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.swipe-card__stamp--pass {
+  left: 12px;
+  color: var(--danger);
+  border-color: var(--danger);
+  transform: translateY(-50%) rotate(-12deg);
+}
+
+.swipe-card__stamp--connect {
+  right: 12px;
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-50%) rotate(12deg);
+}
+
+.swipe-card--fly-left {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  transform: translateX(-140%) rotate(-18deg) !important;
+  opacity: 0;
+}
+
+.swipe-card--fly-right {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  transform: translateX(140%) rotate(18deg) !important;
+  opacity: 0;
+}
+
+.swipe-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.btn-swipe {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow var(--transition);
+  box-shadow: var(--shadow-press);
+}
+
+.btn-swipe:active {
+  transform: scale(0.94);
+}
+
+.btn-swipe--pass {
+  background: #fff;
+  color: var(--danger);
+  border: 2px solid #e8c5c5;
+}
+
+.btn-swipe--connect {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-swipe__glyph {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-bottom: 0.05rem;
+}
+
+.swipe-helper {
+  text-align: center;
+  margin-bottom: 0.25rem !important;
+}
+
+.tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0));
+  gap: 0.35rem;
+}
+
+.tab-bar__btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.45rem 0.35rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--transition), color var(--transition);
+}
+
+.tab-bar__btn:hover {
+  background: var(--accent-soft);
+}
+
+.tab-bar__btn--active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tab-bar__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.tab-bar__badge {
+  position: absolute;
+  top: 0.2rem;
+  right: calc(50% - 1.6rem);
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+/* ============================================
+   Messages (DM list)
+   ============================================ */
+
+.dm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dm-row {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(197, 221, 214, 0.55);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color var(--transition);
+}
+
+.dm-row:hover {
+  border-color: var(--accent);
+}
+
+.dm-row:active {
+  transform: scale(0.99);
+}
+
+.dm-row--unread {
+  border-left: 4px solid var(--accent);
+}
+
+.dm-row__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.dm-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dm-row__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.dm-row__name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.dm-row__distance {
+  margin: 0.15rem 0 0.2rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.dm-row__time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.dm-row__preview {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-state {
+  margin-top: 0.75rem;
+}
+
+.empty-state__title {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+}
+
+.empty-state__text {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* ============================================
+   Chat — top bar with back
+   ============================================ */
+
+.chat-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.65rem !important;
+}
+
+.btn-back {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition), transform 0.12s ease;
+}
+
+.btn-back:hover {
+  background: #c5e4dc;
+}
+
+.btn-back:active {
+  transform: scale(0.96);
+}
+
+.chat-header--inline {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.chat-header--inline .chat-header__info {
+  min-width: 0;
+}
+
+.chat-header--inline .chat-header__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================
+   Utilities
+   ============================================ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* ============================================
+   Student feedback updates: age limits, profile, dark mode
+   ============================================ */
+
+.field--two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.field-error--wide {
+  grid-column: 1 / -1;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.profile-card__avatar,
+.swipe-card__photo[data-photo="true"] {
+  background-size: cover;
+  background-position: center;
+}
+
+.profile-card__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--accent-soft), #b8dfd5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.profile-card__name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.profile-card__meta,
+.settings-card__text {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.settings-card {
+  margin-bottom: 0.85rem;
+}
+
+.settings-card__title {
+  margin: 0;
+  font-weight: 800;
+}
+
+.settings-card .btn {
+  margin-top: 0.85rem;
+}
+
+.settings-card--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+}
+
+.switch__track {
+  width: 50px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  padding: 3px;
+  transition: background var(--transition);
+}
+
+.switch__thumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-press);
+  transition: transform var(--transition);
+}
+
+.switch input:checked + .switch__track {
+  background: var(--accent);
+}
+
+.switch input:checked + .switch__track .switch__thumb {
+  transform: translateX(21px);
+}
+
+body.dark-mode {
+  --bg-page: #101a18;
+  --bg-shell: #162320;
+  --surface: #20302c;
+  --text: #eef7f4;
+  --text-muted: #bad1ca;
+  --accent: #78cbbb;
+  --accent-hover: #61b8a8;
+  --accent-soft: #274940;
+  --border: #3a5f55;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  --shadow-press: 0 4px 14px rgba(0, 0, 0, 0.28);
+  --danger: #ff8c8c;
+  --chat-partner: #273d38;
+  --chat-user: #31584f;
+}
+
+body.dark-mode .btn--secondary,
+body.dark-mode .btn-swipe--pass {
+  background: var(--surface);
+}
+
+body.dark-mode .swipe-card {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================
+   Fixes from feedback screenshots
+   ============================================ */
+
+.field--age-range input[type="range"] {
+  width: 100%;
+  height: 8px;
+  margin: 0.35rem 0 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.range-label {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem !important;
+  color: var(--text-muted) !important;
+}
+
+.screen__content--swipe {
+  touch-action: pan-y;
+}
+
+.swipe-stage {
+  touch-action: pan-y;
+}
+
+.swipe-card {
+  max-width: 318px;
+}
+
+.swipe-card__stamp {
+  width: 118px;
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  padding: 0;
+  border: 5px solid;
+  border-radius: 999px;
+  font-size: 4.4rem;
+  line-height: 1;
+  letter-spacing: 0;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.swipe-card__stamp--pass {
+  color: #fff;
+  border-color: var(--danger);
+  background: rgba(179, 58, 58, 0.72);
+  transform: translate(-50%, -50%) rotate(-6deg);
+}
+
+.swipe-card__stamp--connect {
+  color: #fff;
+  border-color: var(--accent);
+  background: rgba(45, 122, 110, 0.72);
+  transform: translate(-50%, -50%) rotate(6deg);
+}
+
+.btn-swipe--connect .btn-swipe__glyph {
+  font-size: 1.3rem;
+}
+
+/* Final pass/connect feedback: full-card tint with large center icon */
+.swipe-card {
+  border-width: 2px;
+}
+
+.swipe-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+
+.swipe-card--preview-pass {
+  border-color: var(--danger) !important;
+}
+
+.swipe-card--preview-connect {
+  border-color: var(--accent) !important;
+}
+
+.swipe-card--preview-pass::before {
+  background: rgba(179, 58, 58, 0.72);
+  opacity: 1;
+}
+
+.swipe-card--preview-connect::before {
+  background: rgba(45, 122, 110, 0.72);
+  opacity: 1;
+}
+
+.swipe-card__labels {
+  z-index: 4;
+}
+
+.swipe-card__stamp {
+  width: auto !important;
+  height: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #fff !important;
+  font-size: 6rem !important;
+  line-height: 1 !important;
+  text-shadow: 0 8px 24px rgba(26, 47, 42, 0.18);
+}
+
+.swipe-card__stamp--pass,
+.swipe-card__stamp--connect {
+  left: 50% !important;
+  right: auto !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.swipe-card--preview-pass .swipe-card__stamp--pass,
+.swipe-card--preview-connect .swipe-card__stamp--connect {
+  opacity: 1 !important;
+}
+
+.swipe-card--preview-pass .swipe-card__stamp--connect,
+.swipe-card--preview-connect .swipe-card__stamp--pass {
+  opacity: 0 !important;
+}
+
+/* ============================================
+   Privacy and safety controls
+   ============================================ */
+.privacy-list {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.privacy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--accent-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.privacy-row:last-child {
+  border-bottom: 0;
+}
+
+.privacy-row input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.privacy-status,
+.safety-feedback {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.safety-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.safety-actions__title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.safety-actions__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.safety-actions__buttons .btn {
+  width: 100%;
+}
