@@ -305,6 +305,7 @@ body {
 }
 
 .field input[type="text"],
+.field input[type="date"],
 .field select {
   width: 100%;
   padding: 0.65rem 0.75rem;
@@ -317,6 +318,7 @@ body {
 }
 
 .field input:focus,
+.field input[type="date"]:focus,
 .field select:focus {
   outline: none;
   border-color: var(--accent);
