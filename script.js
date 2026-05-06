@@ -88,6 +88,14 @@ const session = {
     minAge: 18,
     maxAge: 50,
   },
+  privacy: {
+    showDistance: true,
+    showAge: true,
+    matchedOnly: true,
+    pausedDiscover: false,
+  },
+  blockedPartnerIds: [],
+  reportedPartnerIds: [],
   activePartner: null,
   workoutsThisWeek: 2,
   weeklyGoal: 4,
@@ -145,6 +153,12 @@ const els = {
   tabProfileBtn: document.getElementById("tab-profile-btn"),
   tabBadge: document.getElementById("tab-badge"),
   darkModeToggle: document.getElementById("dark-mode-toggle"),
+  privacyDistanceToggle: document.getElementById("privacy-distance-toggle"),
+  privacyAgeToggle: document.getElementById("privacy-age-toggle"),
+  privacyMatchesToggle: document.getElementById("privacy-matches-toggle"),
+  privacyPauseToggle: document.getElementById("privacy-pause-toggle"),
+  privacyStatus: document.getElementById("privacy-status"),
+  safetyFeedback: document.getElementById("safety-feedback"),
 };
 
 // -----------------------------------------------------------------------------
@@ -367,9 +381,36 @@ function renderProfilePanel() {
   }
   if (profileFilters) {
     const seekLabel = session.user.seeking === "both" ? "Anyone" : session.user.seeking === "male" ? "Men" : "Women";
-    profileFilters.textContent = `Looking for: ${seekLabel} · Ages ${session.user.minAge}-${session.user.maxAge} · Within ${session.user.maxDistanceMiles} miles`;
+    const distText = session.privacy.showDistance ? `Within ${session.user.maxDistanceMiles} miles` : "Distance hidden";
+    const ageText = session.privacy.showAge ? `Ages ${session.user.minAge}-${session.user.maxAge}` : "Age hidden";
+    profileFilters.textContent = `Looking for: ${seekLabel} · ${ageText} · ${distText}`;
   }
   if (profileAvatar) profileAvatar.textContent = initials;
+  syncPrivacyControls();
+}
+
+function syncPrivacyControls() {
+  if (els.privacyDistanceToggle) els.privacyDistanceToggle.checked = session.privacy.showDistance;
+  if (els.privacyAgeToggle) els.privacyAgeToggle.checked = session.privacy.showAge;
+  if (els.privacyMatchesToggle) els.privacyMatchesToggle.checked = session.privacy.matchedOnly;
+  if (els.privacyPauseToggle) els.privacyPauseToggle.checked = session.privacy.pausedDiscover;
+  if (els.privacyStatus) {
+    const parts = [];
+    parts.push(session.privacy.showDistance ? "distance visible" : "distance hidden");
+    parts.push(session.privacy.showAge ? "age visible" : "age hidden");
+    parts.push(session.privacy.matchedOnly ? "matched-only messages" : "open messages");
+    if (session.privacy.pausedDiscover) parts.push("profile paused");
+    els.privacyStatus.textContent = `Current privacy: ${parts.join(" · ")}.`;
+  }
+}
+
+function readPrivacyControls() {
+  if (els.privacyDistanceToggle) session.privacy.showDistance = els.privacyDistanceToggle.checked;
+  if (els.privacyAgeToggle) session.privacy.showAge = els.privacyAgeToggle.checked;
+  if (els.privacyMatchesToggle) session.privacy.matchedOnly = els.privacyMatchesToggle.checked;
+  if (els.privacyPauseToggle) session.privacy.pausedDiscover = els.privacyPauseToggle.checked;
+  syncPrivacyControls();
+  renderProfilePanel();
 }
 
 // -----------------------------------------------------------------------------
@@ -565,7 +606,7 @@ function renderDmList() {
     return;
   }
   els.dmEmpty.hidden = true;
-  session.dmThreads.forEach((thread) => {
+  session.dmThreads.filter((thread) => !session.blockedPartnerIds.includes(thread.profile.id)).forEach((thread) => {
     const li = document.createElement("li");
     li.className = "dm-row" + (thread.unread ? " dm-row--unread" : "");
 
@@ -605,6 +646,8 @@ function renderDmList() {
 function enterMainApp() {
   session.dmThreads = [];
   session.chatMessagesByPartner = {};
+  session.blockedPartnerIds = [];
+  session.reportedPartnerIds = [];
   session.profileSerial = 0;
   session.profilePage = 1;
   session.swipeDeck = [];
@@ -806,6 +849,34 @@ function scheduleFakePartnerReply(partnerId) {
 }
 
 // -----------------------------------------------------------------------------
+// Safety: report and block
+// -----------------------------------------------------------------------------
+function reportActivePartner() {
+  if (!session.activePartner) return;
+  const id = session.activePartner.id;
+  if (!session.reportedPartnerIds.includes(id)) session.reportedPartnerIds.push(id);
+  if (els.safetyFeedback) {
+    els.safetyFeedback.textContent = `${session.activePartner.displayName} was reported in this demo. A real app would send this to moderation review.`;
+  }
+}
+
+function blockActivePartner() {
+  if (!session.activePartner) return;
+  const blocked = session.activePartner;
+  if (!session.blockedPartnerIds.includes(blocked.id)) session.blockedPartnerIds.push(blocked.id);
+  session.dmThreads = session.dmThreads.filter((thread) => thread.profile.id !== blocked.id);
+  delete session.chatMessagesByPartner[blocked.id];
+  renderDmList();
+  updateTabBadge();
+  session.activePartner = null;
+  showScreen("main");
+  selectMainTab("messages");
+  if (els.dmEmpty) {
+    els.dmEmpty.hidden = session.dmThreads.length > 0;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Quick actions: motivation & reschedule
 // -----------------------------------------------------------------------------
 const MOTIVATION_LINES = [
@@ -953,6 +1024,12 @@ function bindEvents() {
     });
   }
 
+  [els.privacyDistanceToggle, els.privacyAgeToggle, els.privacyMatchesToggle, els.privacyPauseToggle].forEach((toggle) => {
+    if (toggle) toggle.addEventListener("change", readPrivacyControls);
+  });
+  syncPrivacyControls();
+
+
   document.getElementById("btn-swipe-pass").addEventListener("click", () => {
     if (session.swipeDeck.length) completeSwipe("left");
   });
@@ -1022,6 +1099,12 @@ function bindEvents() {
     );
   });
 
+  const btnReportUser = document.getElementById("btn-report-user");
+  if (btnReportUser) btnReportUser.addEventListener("click", reportActivePartner);
+
+  const btnBlockUser = document.getElementById("btn-block-user");
+  if (btnBlockUser) btnBlockUser.addEventListener("click", blockActivePartner);
+
   document.getElementById("btn-to-progress").addEventListener("click", () => {
     syncProgressUI();
     showScreen("progress");
@@ -1044,6 +1127,9 @@ function bindEvents() {
       minAge: 18,
       maxAge: 50,
     };
+    session.privacy = { showDistance: true, showAge: true, matchedOnly: true, pausedDiscover: false };
+    session.blockedPartnerIds = [];
+    session.reportedPartnerIds = [];
     session.activePartner = null;
     session.swipeDeck = [];
     session.dmThreads = [];
