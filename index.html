@@ -1,1656 +1,453 @@
-/* ============================================
-   Spotter — Base & resets
-   ============================================ */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: var(--text);
-  background: var(--bg-page);
-}
-
-/* ============================================
-   CSS variables — wellness palette
-   ============================================ */
-
-:root {
-  --bg-page: #e8f2ef;
-  --bg-shell: #f7faf9;
-  --surface: #ffffff;
-  --text: #1a2f2a;
-  --text-muted: #4d6b63;
-  --accent: #2d7a6e;
-  --accent-hover: #24665c;
-  --accent-soft: #d4ebe6;
-  --border: #c5ddd6;
-  --shadow: 0 8px 28px rgba(26, 47, 42, 0.08);
-  --shadow-press: 0 4px 14px rgba(26, 47, 42, 0.1);
-  --radius: 16px;
-  --radius-sm: 12px;
-  --danger: #b33a3a;
-  --chat-partner: #e3f0ed;
-  --chat-user: #d7eee9;
-  --focus-ring: 0 0 0 3px rgba(45, 122, 110, 0.35);
-  --transition: 0.22s ease;
-}
-
-/* ============================================
-   App shell — phone-style container
-   ============================================ */
-
-.app-shell {
-  width: 100%;
-  max-width: 420px;
-  min-height: 100vh;
-  margin: 0 auto;
-  background: var(--bg-shell);
-  box-shadow: var(--shadow);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-@media (min-width: 480px) {
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 1.5rem 1rem 2rem;
-  }
-
-  .app-shell {
-    min-height: min(860px, calc(100vh - 3rem));
-    border-radius: 28px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-  }
-}
-
-/* ============================================
-   Flow header & progress indicator
-   ============================================ */
-
-.flow-header {
-  flex-shrink: 0;
-  padding: 0.75rem 1rem 0.5rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.flow-header__inner {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.flow-header__brand {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--accent);
-  letter-spacing: -0.02em;
-}
-
-.flow-header__step {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.progress-track {
-  flex: 1;
-  height: 6px;
-  background: var(--accent-soft);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.progress-track__fill {
-  height: 100%;
-  width: 20%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: width var(--transition);
-}
-
-/* ============================================
-   Screens container & transitions
-   ============================================ */
-
-.screens {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.screen {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 1.25rem 1rem 2rem;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(12px);
-  transition:
-    opacity var(--transition),
-    transform var(--transition),
-    visibility 0s linear 0.22s;
-}
-
-.screen--active {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(0);
-  transition:
-    opacity var(--transition),
-    transform var(--transition),
-    visibility 0s;
-}
-
-.screen--active:not(.screen--main) {
-  overflow-y: auto;
-}
-
-.screen--main.screen--active {
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.screen[hidden] {
-  display: none !important;
-}
-
-.screen__content {
-  max-width: 100%;
-}
-
-.screen__content--chat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding-bottom: 1rem;
-}
-
-/* ============================================
-   Typography — welcome & sections
-   ============================================ */
-
-.hero-badge {
-  font-size: 2.25rem;
-  text-align: center;
-  margin-bottom: 0.25rem;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  text-align: center;
-  color: var(--text);
-}
-
-.hero-tagline {
-  margin: 0.35rem 0 1rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  text-align: center;
-  color: var(--accent);
-}
-
-.hero-support {
-  margin: 0 0 0.75rem;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-}
-
-.screen-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.screen-lead {
-  margin: 0 0 1.25rem;
-  color: var(--text-muted);
-  font-size: 0.92rem;
-}
-
-.helper-text {
-  margin: 0 0 1.25rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.helper-text--indent {
-  margin: -0.75rem 0 1rem;
-  padding-left: 0.25rem;
-}
-
-.microcopy {
-  margin: 1rem 0 0;
-  font-size: 0.78rem;
-  text-align: center;
-}
-
-.microcopy--muted {
-  color: var(--text-muted);
-}
-
-/* ============================================
-   Cards
-   ============================================ */
-
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 1rem 1.1rem;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(197, 221, 214, 0.6);
-}
-
-.card--compact {
-  padding: 0.75rem 1rem;
-}
-
-/* ============================================
-   Forms
-   ============================================ */
-
-.prefs-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.field {
-  margin-bottom: 0.85rem;
-}
-
-.field label {
-  display: block;
-  font-size: 0.82rem;
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-  color: var(--text);
-}
-
-.field input[type="text"],
-.field input[type="date"],
-.field select {
-  width: 100%;
-  padding: 0.65rem 0.75rem;
-  font-size: 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-
-.field input:focus,
-.field input[type="date"]:focus,
-.field select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-
-.field--checkbox {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  margin-bottom: 0.35rem;
-}
-
-.field--checkbox input {
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-top: 0.2rem;
-  accent-color: var(--accent);
-}
-
-.label-inline {
-  font-weight: 500;
-  font-size: 0.92rem;
-}
-
-.optional {
-  font-weight: 400;
-  color: var(--text-muted);
-  font-size: 0.85em;
-}
-
-.field--slider {
-  margin-bottom: 1rem;
-}
-
-.field-slider__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 0.4rem;
-}
-
-.field-slider__head label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.field-slider__output {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--accent);
-  min-width: 2rem;
-  text-align: right;
-}
-
-.field--slider input[type="range"] {
-  width: 100%;
-  height: 8px;
-  margin: 0.35rem 0 0.25rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.field--slider input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: var(--shadow-press);
-}
-
-.field--slider input[type="range"]::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: var(--shadow-press);
-  cursor: pointer;
-}
-
-.field-error {
-  min-height: 1.1rem;
-  margin: 0.25rem 0 0;
-  font-size: 0.78rem;
-  color: var(--danger);
-}
-
-/* ============================================
-   Buttons
-   ============================================ */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.65rem 1.1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: inherit;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition:
-    transform 0.12s ease,
-    box-shadow var(--transition),
-    background var(--transition),
-    color var(--transition);
-}
-
-.btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.btn--primary {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: var(--shadow-press);
-}
-
-.btn--primary:hover {
-  background: var(--accent-hover);
-}
-
-.btn--secondary {
-  background: var(--surface);
-  color: var(--accent);
-  border: 2px solid var(--accent);
-}
-
-.btn--secondary:hover {
-  background: var(--accent-soft);
-}
-
-.btn--ghost {
-  background: var(--accent-soft);
-  color: var(--text);
-  border: 1px solid transparent;
-}
-
-.btn--ghost:hover {
-  background: #c5e4dc;
-}
-
-.btn--large {
-  width: 100%;
-  padding: 0.85rem 1.25rem;
-  font-size: 1rem;
-}
-
-.btn--small {
-  font-size: 0.85rem;
-  padding: 0.5rem 0.9rem;
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 1rem;
-}
-
-.btn-row--stack {
-  margin-top: 1.25rem;
-}
-
-/* ============================================
-   Match card
-   ============================================ */
-
-.match-card {
-  margin-top: 0.25rem;
-}
-
-.match-card__header {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-bottom: 1rem;
-}
-
-.avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, var(--accent-soft), #b8dfd5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.match-name {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.match-meta {
-  margin: 0.15rem 0 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.match-details {
-  margin: 0 0 1rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.match-details__row {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.88rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--accent-soft);
-}
-
-.match-details__row:last-of-type {
-  border-bottom: none;
-}
-
-.match-details dt {
-  margin: 0;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.match-details dd {
-  margin: 0;
-  font-weight: 600;
-  text-align: right;
-}
-
-.match-bio {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.compat {
-  background: var(--accent-soft);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem;
-  margin-bottom: 0.25rem;
-}
-
-.compat__label {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 0.82rem;
-  margin-bottom: 0.4rem;
-}
-
-.compat__label strong {
-  font-size: 1.1rem;
-  color: var(--accent);
-}
-
-.compat__bar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 0.65rem;
-}
-
-.compat__bar-fill {
-  height: 100%;
-  width: 50%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: width var(--transition);
-}
-
-.compat__why {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--text);
-  line-height: 1.45;
-}
-
-/* ============================================
-   Chat UI
-   ============================================ */
-
-.chat-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.chat-header__avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--accent);
-}
-
-.chat-header__name {
-  margin: 0;
-  font-weight: 700;
-}
-
-.chat-header__distance {
-  margin: 0.1rem 0 0.15rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.chat-header__status {
-  margin: 0.1rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  background: #3cb371;
-  border-radius: 50%;
-}
-
-.chat-log {
-  flex: 1;
-  min-height: 200px;
-  max-height: 42vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.85rem;
-}
-
-.chat-bubble {
-  max-width: 88%;
-  padding: 0.65rem 0.85rem;
-  border-radius: 14px;
-  font-size: 0.88rem;
-  line-height: 1.45;
-}
-
-.chat-bubble--partner {
-  align-self: flex-start;
-  background: var(--chat-partner);
-  color: var(--text);
-  border-bottom-left-radius: 4px;
-}
-
-.chat-bubble--user {
-  align-self: flex-end;
-  background: var(--chat-user);
-  color: var(--text);
-  border-bottom-right-radius: 4px;
-}
-
-.chat-meta {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  margin-top: 0.25rem;
-  padding: 0 0.2rem;
-}
-
-.chat-bubble--partner + .chat-meta {
-  align-self: flex-start;
-}
-
-.chat-bubble--user + .chat-meta {
-  align-self: flex-end;
-  text-align: right;
-}
-
-.next-workout__label {
-  margin: 0 0 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-}
-
-.next-workout__title {
-  margin: 0 0 0.35rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.next-workout__hint {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.quick-actions-label {
-  margin: 0.25rem 0 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.quick-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.chat-footer-nav {
-  margin-top: 0.35rem;
-}
-
-.chat-footer-nav .btn {
-  width: 100%;
-}
-
-/* ============================================
-   Chat — compose (type your own message)
-   ============================================ */
-
-.chat-compose {
-  display: flex;
-  align-items: stretch;
-  gap: 0.5rem;
-  padding: 0.55rem 0.65rem !important;
-}
-
-.chat-compose__input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.55rem 0.65rem;
-  font-size: 0.92rem;
-  font-family: inherit;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-}
-
-.chat-compose__input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-
-.chat-compose__send {
-  flex-shrink: 0;
-  padding-left: 0.9rem !important;
-  padding-right: 0.9rem !important;
-  font-size: 0.85rem !important;
-}
-
-/* ============================================
-   Progress / stats
-   ============================================ */
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-@media (min-width: 360px) {
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .stat-card--wide {
-    grid-column: span 2;
-  }
-}
-
-.stat-card__label {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.stat-card__value {
-  margin: 0.35rem 0;
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--accent);
-}
-
-.stat-card__hint {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.summary-card__title {
-  margin: 0 0 0.5rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.summary-card__text {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.encouragement {
-  margin: 1rem 0 0;
-  padding: 0.9rem;
-  background: var(--accent-soft);
-  border-radius: var(--radius-sm);
-  font-size: 0.92rem;
-  color: var(--text);
-  line-height: 1.5;
-}
-
-/* ============================================
-   Hub header (Discover / Messages home)
-   ============================================ */
-
-.flow-header--hub .progress-track {
-  opacity: 0.65;
-}
-
-/* ============================================
-   Main hub — tab panels & bottom bar
-   ============================================ */
-
-.main-panels {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-}
-
-.main-panel {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-.main-panel[hidden] {
-  display: none !important;
-}
-
-.main-panel > .screen__content {
-  padding: 1.25rem 1rem 1rem;
-}
-
-.screen__content--swipe {
-  padding: 1rem 1rem 0.5rem;
-  min-height: 100%;
-}
-
-.swipe-title {
-  margin: 0 0 0.35rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.swipe-sub {
-  margin: 0 0 1rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.45;
-}
-
-.swipe-stage {
-  position: relative;
-  min-height: 340px;
-  margin-bottom: 0.75rem;
-  touch-action: none;
-}
-
-.swipe-card {
-  position: absolute;
-  left: 0;
-  right: 0;
-  margin: 0 auto;
-  max-width: 340px;
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 36px rgba(26, 47, 42, 0.12);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  cursor: grab;
-  transition: transform 0.2s ease, box-shadow var(--transition);
-  user-select: none;
-}
-
-.swipe-card:active {
-  cursor: grabbing;
-}
-
-.swipe-card__photo,
-.swipe-card__body {
-  pointer-events: none;
-}
-
-.swipe-card__photo {
-  height: 120px;
-  background: linear-gradient(155deg, var(--accent-soft), #a8d4c8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.05em;
-}
-
-.swipe-card__body {
-  padding: 1rem 1.05rem 1.15rem;
-}
-
-.swipe-card__name-line {
-  margin: 0 0 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.swipe-card__distance {
-  margin: 0 0 0.4rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.swipe-card__tags {
-  margin: 0 0 0.65rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.swipe-card__bio {
-  margin: 0;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  line-height: 1.45;
-}
-
-.swipe-card__labels {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.swipe-card__stamp {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  padding: 0.4rem 0.6rem;
-  border: 3px solid;
-  border-radius: 8px;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-
-.swipe-card__stamp--pass {
-  left: 12px;
-  color: var(--danger);
-  border-color: var(--danger);
-  transform: translateY(-50%) rotate(-12deg);
-}
-
-.swipe-card__stamp--connect {
-  right: 12px;
-  color: var(--accent);
-  border-color: var(--accent);
-  transform: translateY(-50%) rotate(12deg);
-}
-
-.swipe-card--fly-left {
-  transition: transform 0.35s ease, opacity 0.35s ease;
-  transform: translateX(-140%) rotate(-18deg) !important;
-  opacity: 0;
-}
-
-.swipe-card--fly-right {
-  transition: transform 0.35s ease, opacity 0.35s ease;
-  transform: translateX(140%) rotate(18deg) !important;
-  opacity: 0;
-}
-
-.swipe-actions {
-  display: flex;
-  justify-content: center;
-  gap: 1.25rem;
-  padding: 0.25rem 0 0.75rem;
-}
-
-.btn-swipe {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  font-size: 0.62rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow var(--transition);
-  box-shadow: var(--shadow-press);
-}
-
-.btn-swipe:active {
-  transform: scale(0.94);
-}
-
-.btn-swipe--pass {
-  background: #fff;
-  color: var(--danger);
-  border: 2px solid #e8c5c5;
-}
-
-.btn-swipe--connect {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn-swipe__glyph {
-  font-size: 1.1rem;
-  line-height: 1;
-  margin-bottom: 0.05rem;
-}
-
-.swipe-helper {
-  text-align: center;
-  margin-bottom: 0.25rem !important;
-}
-
-.tab-bar {
-  flex-shrink: 0;
-  display: flex;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0));
-  gap: 0.35rem;
-}
-
-.tab-bar__btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0.45rem 0.35rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  font-size: 0.68rem;
-  font-weight: 600;
-  font-family: inherit;
-  color: var(--text-muted);
-  cursor: pointer;
-  position: relative;
-  transition: background var(--transition), color var(--transition);
-}
-
-.tab-bar__btn:hover {
-  background: var(--accent-soft);
-}
-
-.tab-bar__btn--active {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.tab-bar__icon {
-  font-size: 1.1rem;
-  line-height: 1;
-  opacity: 0.85;
-}
-
-.tab-bar__badge {
-  position: absolute;
-  top: 0.2rem;
-  right: calc(50% - 1.6rem);
-  min-width: 1.05rem;
-  height: 1.05rem;
-  padding: 0 0.28rem;
-  border-radius: 999px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 0.58rem;
-  font-weight: 800;
-  line-height: 1.05rem;
-  text-align: center;
-}
-
-/* ============================================
-   Messages (DM list)
-   ============================================ */
-
-.dm-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.dm-row {
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  background: var(--surface);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(197, 221, 214, 0.55);
-  cursor: pointer;
-  transition: transform 0.12s ease, border-color var(--transition);
-}
-
-.dm-row:hover {
-  border-color: var(--accent);
-}
-
-.dm-row:active {
-  transform: scale(0.99);
-}
-
-.dm-row--unread {
-  border-left: 4px solid var(--accent);
-}
-
-.dm-row__avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.dm-row__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.dm-row__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.2rem;
-}
-
-.dm-row__name {
-  font-weight: 700;
-  font-size: 0.92rem;
-}
-
-.dm-row__distance {
-  margin: 0.15rem 0 0.2rem;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.dm-row__time {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.dm-row__preview {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.empty-state {
-  margin-top: 0.75rem;
-}
-
-.empty-state__title {
-  margin: 0 0 0.35rem;
-  font-weight: 700;
-}
-
-.empty-state__text {
-  margin: 0 0 0.85rem;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  line-height: 1.45;
-}
-
-/* ============================================
-   Chat — top bar with back
-   ============================================ */
-
-.chat-topbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.65rem !important;
-}
-
-.btn-back {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 1.15rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background var(--transition), transform 0.12s ease;
-}
-
-.btn-back:hover {
-  background: #c5e4dc;
-}
-
-.btn-back:active {
-  transform: scale(0.96);
-}
-
-.chat-header--inline {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-.chat-header--inline .chat-header__info {
-  min-width: 0;
-}
-
-.chat-header--inline .chat-header__name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ============================================
-   Utilities
-   ============================================ */
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-/* ============================================
-   Student feedback updates: age limits, profile, dark mode
-   ============================================ */
-
-.field--two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-.field-error--wide {
-  grid-column: 1 / -1;
-}
-
-.profile-card {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-bottom: 0.85rem;
-}
-
-.profile-card__avatar,
-.swipe-card__photo[data-photo="true"] {
-  background-size: cover;
-  background-position: center;
-}
-
-.profile-card__avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, var(--accent-soft), #b8dfd5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.profile-card__name {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 800;
-}
-
-.profile-card__meta,
-.settings-card__text {
-  margin: 0.2rem 0 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.settings-card {
-  margin-bottom: 0.85rem;
-}
-
-.settings-card__title {
-  margin: 0;
-  font-weight: 800;
-}
-
-.settings-card .btn {
-  margin-top: 0.85rem;
-}
-
-.settings-card--row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.switch {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.switch input {
-  position: absolute;
-  opacity: 0;
-}
-
-.switch__track {
-  width: 50px;
-  height: 28px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  padding: 3px;
-  transition: background var(--transition);
-}
-
-.switch__thumb {
-  display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: var(--shadow-press);
-  transition: transform var(--transition);
-}
-
-.switch input:checked + .switch__track {
-  background: var(--accent);
-}
-
-.switch input:checked + .switch__track .switch__thumb {
-  transform: translateX(21px);
-}
-
-body.dark-mode {
-  --bg-page: #101a18;
-  --bg-shell: #162320;
-  --surface: #20302c;
-  --text: #eef7f4;
-  --text-muted: #bad1ca;
-  --accent: #78cbbb;
-  --accent-hover: #61b8a8;
-  --accent-soft: #274940;
-  --border: #3a5f55;
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
-  --shadow-press: 0 4px 14px rgba(0, 0, 0, 0.28);
-  --danger: #ff8c8c;
-  --chat-partner: #273d38;
-  --chat-user: #31584f;
-}
-
-body.dark-mode .btn--secondary,
-body.dark-mode .btn-swipe--pass {
-  background: var(--surface);
-}
-
-body.dark-mode .swipe-card {
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
-}
-
-/* ============================================
-   Fixes from feedback screenshots
-   ============================================ */
-
-.field--age-range input[type="range"] {
-  width: 100%;
-  height: 8px;
-  margin: 0.35rem 0 0.65rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.range-label {
-  display: block;
-  margin-top: 0.45rem;
-  font-size: 0.78rem !important;
-  color: var(--text-muted) !important;
-}
-
-.screen__content--swipe {
-  touch-action: pan-y;
-}
-
-.swipe-stage {
-  touch-action: pan-y;
-}
-
-.swipe-card {
-  max-width: 318px;
-}
-
-.swipe-card__stamp {
-  width: 118px;
-  height: 118px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  top: 50%;
-  left: 50%;
-  right: auto;
-  padding: 0;
-  border: 5px solid;
-  border-radius: 999px;
-  font-size: 4.4rem;
-  line-height: 1;
-  letter-spacing: 0;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.swipe-card__stamp--pass {
-  color: #fff;
-  border-color: var(--danger);
-  background: rgba(179, 58, 58, 0.72);
-  transform: translate(-50%, -50%) rotate(-6deg);
-}
-
-.swipe-card__stamp--connect {
-  color: #fff;
-  border-color: var(--accent);
-  background: rgba(45, 122, 110, 0.72);
-  transform: translate(-50%, -50%) rotate(6deg);
-}
-
-.btn-swipe--connect .btn-swipe__glyph {
-  font-size: 1.3rem;
-}
-
-/* Final pass/connect feedback: full-card tint with large center icon */
-.swipe-card {
-  border-width: 2px;
-}
-
-.swipe-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  z-index: 3;
-  pointer-events: none;
-  transition: opacity 0.14s ease;
-}
-
-.swipe-card--preview-pass {
-  border-color: var(--danger) !important;
-}
-
-.swipe-card--preview-connect {
-  border-color: var(--accent) !important;
-}
-
-.swipe-card--preview-pass::before {
-  background: rgba(179, 58, 58, 0.72);
-  opacity: 1;
-}
-
-.swipe-card--preview-connect::before {
-  background: rgba(45, 122, 110, 0.72);
-  opacity: 1;
-}
-
-.swipe-card__labels {
-  z-index: 4;
-}
-
-.swipe-card__stamp {
-  width: auto !important;
-  height: auto !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: #fff !important;
-  font-size: 6rem !important;
-  line-height: 1 !important;
-  text-shadow: 0 8px 24px rgba(26, 47, 42, 0.18);
-}
-
-.swipe-card__stamp--pass,
-.swipe-card__stamp--connect {
-  left: 50% !important;
-  right: auto !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-.swipe-card--preview-pass .swipe-card__stamp--pass,
-.swipe-card--preview-connect .swipe-card__stamp--connect {
-  opacity: 1 !important;
-}
-
-.swipe-card--preview-pass .swipe-card__stamp--connect,
-.swipe-card--preview-connect .swipe-card__stamp--pass {
-  opacity: 0 !important;
-}
-
-/* ============================================
-   Privacy and safety controls
-   ============================================ */
-.privacy-list {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 0.75rem;
-}
-
-.privacy-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid var(--accent-soft);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.privacy-row:last-child {
-  border-bottom: 0;
-}
-
-.privacy-row input[type="checkbox"] {
-  width: 1.15rem;
-  height: 1.15rem;
-  accent-color: var(--accent);
-  flex-shrink: 0;
-}
-
-.privacy-status,
-.safety-feedback {
-  margin: 0.75rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-.safety-actions {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.safety-actions__title {
-  margin: 0;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.safety-actions__buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-}
-
-.safety-actions__buttons .btn {
-  width: 100%;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Spotter — Find your fitness accountability partner" />
+  <title>Spotter — Fitness Accountability</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- App shell: phone frame on larger screens -->
+  <div class="app-shell" id="app-shell">
+    <!-- Flow progress: shows step in onboarding / journey -->
+    <header class="flow-header" aria-label="Your progress in Spotter">
+      <div class="flow-header__inner">
+        <span class="flow-header__brand">Spotter</span>
+        <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1" aria-valuetext="Step 1 of 6: Welcome" id="progress-track">
+          <div class="progress-track__fill" id="progress-fill"></div>
+        </div>
+        <span class="flow-header__step" id="step-label">1 / 6</span>
+      </div>
+    </header>
+
+    <main class="screens" id="screens">
+      <!-- Screen 1: Welcome -->
+      <section class="screen screen--active" id="screen-welcome" data-step="1" aria-labelledby="welcome-heading">
+        <div class="screen__content">
+          <div class="hero-badge" aria-hidden="true">💪</div>
+          <h1 id="welcome-heading" class="hero-title">Spotter</h1>
+          <p class="hero-tagline">Find your fitness accountability partner</p>
+          <p class="hero-support">
+            Many people stop working out, not because they do not care, but because going alone is hard.
+            Spotter pairs you with someone who gets your goals and your schedule, so you can show up together.
+          </p>
+          <p class="helper-text">
+            No judgment, no pressure, just friendly support. Take it one step at a time.
+          </p>
+          <button type="button" class="btn btn--primary btn--large" id="btn-get-started">
+            Get Started
+          </button>
+          <p class="microcopy microcopy--muted">Your answers stay on this device for this visit only.</p>
+        </div>
+      </section>
+
+      <!-- Screen 2: Age Verification -->
+      <section class="screen" id="screen-age" data-step="2" aria-labelledby="age-heading" hidden>
+        <div class="screen__content">
+          <h2 id="age-heading" class="screen-title">Age verification</h2>
+          <p class="screen-lead">
+            Before you can use Spotter, enter your birthday so we can make sure you meet the age requirement.
+          </p>
+
+          <form class="prefs-form" id="age-form" novalidate>
+            <div class="field">
+              <label for="birthdate">Your birthday</label>
+              <input type="date" id="birthdate" name="birthdate" required aria-describedby="birthdate-hint" />
+              <p class="helper-text" id="birthdate-hint">You must be 18 or older to use Spotter. Your profile can show your age, but your birthday stays hidden unless you turn that on in Privacy.</p>
+              <p class="field-error" id="error-birthdate" role="alert"></p>
+            </div>
+
+            <div class="card age-result-card" id="age-result-card" hidden>
+              <p class="settings-card__title">Your age</p>
+              <p class="settings-card__text" id="age-result-text">Age will appear here.</p>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--large" id="btn-age-continue">Continue</button>
+            <p class="microcopy microcopy--muted">You cannot access the app options until this step is passed.</p>
+          </form>
+        </div>
+      </section>
+
+      <!-- Screen 3: Preferences -->
+      <section class="screen" id="screen-preferences" data-step="3" aria-labelledby="prefs-heading" hidden>
+        <div class="screen__content">
+          <h2 id="prefs-heading" class="screen-title">Tell us about you</h2>
+          <p class="screen-lead">
+            We use this to suggest a partner who fits your rhythm, not to label you. Change anything anytime.
+          </p>
+
+          <form class="prefs-form" id="prefs-form" novalidate>
+            <div class="field">
+              <label for="user-name">Your name</label>
+              <input type="text" id="user-name" name="name" autocomplete="given-name" placeholder="Alex" required minlength="2" maxlength="40" />
+              <p class="field-error" id="error-name" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="goal">Fitness goal</label>
+              <select id="goal" name="goal" required>
+                <option value="">Choose one…</option>
+                <option value="lose weight">Lose weight</option>
+                <option value="build muscle">Build muscle</option>
+                <option value="improve endurance">Improve endurance</option>
+                <option value="stay consistent">Stay consistent</option>
+              </select>
+              <p class="field-error" id="error-goal" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="experience">Experience level</label>
+              <select id="experience" name="experience" required>
+                <option value="">Choose one…</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+              <p class="field-error" id="error-experience" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="workout-type">Workout preference</label>
+              <select id="workout-type" name="workoutType" required>
+                <option value="">Choose one…</option>
+                <option value="gym">Gym</option>
+                <option value="home">Home workouts</option>
+                <option value="running">Running / Cardio</option>
+                <option value="mixed">Mixed</option>
+              </select>
+              <p class="field-error" id="error-workout" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="availability">When you usually can work out</label>
+              <select id="availability" name="availability" required>
+                <option value="">Choose one…</option>
+                <option value="mornings">Mornings</option>
+                <option value="afternoons">Afternoons</option>
+                <option value="evenings">Evenings</option>
+                <option value="flexible">Flexible</option>
+              </select>
+              <p class="field-error" id="error-availability" role="alert"></p>
+            </div>
+
+            <div class="field field--age-range">
+              <div class="field-slider__head">
+                <label>Age range</label>
+                <output class="field-slider__output" id="age-range-value">18–50</output>
+              </div>
+              <label class="range-label" for="min-age">Minimum age</label>
+              <input type="range" id="min-age" name="minAge" min="18" max="60" step="1" value="18" />
+              <label class="range-label" for="max-age">Maximum age</label>
+              <input type="range" id="max-age" name="maxAge" min="18" max="60" step="1" value="50" />
+              <p class="helper-text" id="age-range-hint">Drag either slider to set who appears in Discover.</p>
+              <p class="field-error" id="error-age" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="seeking">Who would you like to pair with?</label>
+              <select id="seeking" name="seeking" required>
+                <option value="">Choose one…</option>
+                <option value="male">Men</option>
+                <option value="female">Women</option>
+                <option value="both">Anyone (no preference)</option>
+              </select>
+              <p class="field-error" id="error-seeking" role="alert"></p>
+            </div>
+            <p class="helper-text helper-text--indent">
+              We only use this to suggest partners, you can always change your mind later.
+            </p>
+
+            <div class="field field--slider">
+              <div class="field-slider__head">
+                <label for="max-distance">Search within (miles)</label>
+                <output class="field-slider__output" id="distance-value" for="max-distance">10</output>
+              </div>
+              <input
+                type="range"
+                id="max-distance"
+                name="maxDistance"
+                min="1"
+                max="20"
+                step="1"
+                value="10"
+                aria-valuemin="1"
+                aria-valuemax="20"
+                aria-valuenow="10"
+                aria-describedby="max-distance-hint"
+              />
+              <p class="helper-text" id="max-distance-hint">
+                Each person gets a random distance, not real GPS.
+              </p>
+            </div>
+
+            <div class="field field--checkbox">
+              <input type="checkbox" id="new-to-fitnessToggle" name="newToFitness" />
+              <label for="new-to-fitnessToggle" class="label-inline">
+                I’m new to fitness <span class="optional">(optional)</span>
+              </label>
+            </div>
+            <p class="helper-text helper-text--indent">
+              Checking this helps us match you with patient, encouraging partners.
+            </p>
+
+            <button type="submit" class="btn btn--primary btn--large" id="btn-find-match">
+              Start discovering
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Screen 4: Main hub — Discover (swipe) + Messages tabs -->
+      <section class="screen screen--main" id="screen-main" data-step="4" aria-label="Spotter home" hidden>
+        <div class="main-panels" id="main-panels">
+          <!-- Tab: Tinder-style gym discover -->
+          <div class="main-panel main-panel--active" id="panel-swipe" role="tabpanel" aria-labelledby="tab-swipe-btn">
+            <div class="screen__content screen__content--swipe">
+              <h2 class="swipe-title">Discover partners</h2>
+              <p class="swipe-sub">
+                Swipe anywhere on this screen, or use the buttons below. Left passes. Right connects.
+              </p>
+              <div class="swipe-stage" id="swipe-stage">
+                <div class="swipe-card" id="swipe-card" tabindex="0">
+                  <div class="swipe-card__photo" id="swipe-card-avatar" aria-label="Profile picture" role="img">SP</div>
+                  <div class="swipe-card__body">
+                    <p class="swipe-card__name-line">
+                      <span id="swipe-card-name">Jordan M.</span>,
+                      <span id="swipe-card-age">28</span>
+                    </p>
+                    <p class="swipe-card__distance" id="swipe-card-distance">— mi away</p>
+                    <p class="swipe-card__tags" id="swipe-card-tags">Intermediate · Mornings · Mixed</p>
+                    <p class="swipe-card__bio" id="swipe-card-bio">Bio text</p>
+                  </div>
+                  <div class="swipe-card__labels" aria-hidden="true">
+                    <span class="swipe-card__stamp swipe-card__stamp--pass" id="swipe-stamp-pass">✕</span>
+                    <span class="swipe-card__stamp swipe-card__stamp--connect" id="swipe-stamp-connect">♥</span>
+                  </div>
+                </div>
+              </div>
+              <div class="swipe-actions">
+                <button type="button" class="btn-swipe btn-swipe--pass" id="btn-swipe-pass" aria-label="Pass on this partner">
+                  <span class="btn-swipe__glyph" aria-hidden="true">✕</span>
+                  Pass
+                </button>
+                <button type="button" class="btn-swipe btn-swipe--connect" id="btn-swipe-connect" aria-label="Connect with this partner">
+                  <span class="btn-swipe__glyph" aria-hidden="true">♥</span>
+                  Connect
+                </button>
+              </div>
+              <p class="helper-text swipe-helper" id="swipe-helper">Swipe anywhere on the screen, or use the buttons below.</p>
+              <div class="empty-state card" id="swipe-empty" hidden>
+                <p class="empty-state__title">You’re all caught up</p>
+                <p class="empty-state__text">You reached the end of this page of partners. Load another page or adjust your preferences.</p>
+                <button type="button" class="btn btn--secondary" id="btn-swipe-reset">Load next page</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: DMs list -->
+          <div class="main-panel" id="panel-messages" role="tabpanel" aria-labelledby="tab-messages-btn" hidden>
+            <div class="screen__content">
+              <h2 class="screen-title">Messages</h2>
+              <p class="screen-lead">
+                Chats with people you connected with. Everyone here wants a no-pressure gym buddy.
+              </p>
+              <ul class="dm-list" id="dm-list" aria-label="Direct messages"></ul>
+              <div class="empty-state card" id="dm-empty" hidden>
+                <p class="empty-state__title">No messages yet</p>
+                <p class="empty-state__text">Swipe right on someone in Discover to open a DM. We’ll keep this space kind and low-stress.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: User profile / settings -->
+          <div class="main-panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile-btn" hidden>
+            <div class="screen__content">
+              <h2 class="screen-title">Your profile</h2>
+              <p class="screen-lead">Manage the info other partners would see in this prototype.</p>
+
+              <div class="card profile-card">
+                <div class="profile-card__avatar" id="profile-avatar" aria-hidden="true">YO</div>
+                <div>
+                  <p class="profile-card__name" id="profile-name">Your name</p>
+                  <p class="profile-card__meta" id="profile-meta">Goal · Experience · Availability</p>
+                  <p class="profile-card__meta" id="profile-age-line">Age verified</p>
+                </div>
+              </div>
+
+              <div class="card settings-card">
+                <p class="settings-card__title">Preferences</p>
+                <p class="settings-card__text" id="profile-filters">Distance, age range, and partner preference will show here.</p>
+                <button type="button" class="btn btn--secondary btn--large" id="btn-edit-profile">Edit preferences</button>
+              </div>
+
+              <div class="card settings-card settings-card--row">
+                <div>
+                  <p class="settings-card__title">Dark mode</p>
+                  <p class="settings-card__text">Switch to a darker theme for low-light use.</p>
+                </div>
+                <label class="switch" for="dark-mode-toggle">
+                  <input type="checkbox" id="dark-mode-toggle" />
+                  <span class="switch__track"><span class="switch__thumb"></span></span>
+                </label>
+              </div>
+
+              <div class="card settings-card">
+                <p class="settings-card__title">Privacy controls</p>
+                <p class="settings-card__text" id="age-verification-status">Age verification is completed before setup. Your age can be shown without revealing your birthday.</p>
+                <p class="settings-card__text">Choose what other people can see before they connect with you.</p>
+                <div class="privacy-list">
+                  <label class="privacy-row" for="privacy-distance-toggle">
+                    <span>Show approximate distance</span>
+                    <input type="checkbox" id="privacy-distance-toggle" checked />
+                  </label>
+                  <label class="privacy-row" for="privacy-age-toggle">
+                    <span>Show my age</span>
+                    <input type="checkbox" id="privacy-age-toggle" checked />
+                  </label>
+                  <label class="privacy-row" for="privacy-birthday-toggle">
+                    <span>Show my birthday</span>
+                    <input type="checkbox" id="privacy-birthday-toggle" />
+                  </label>
+                  <label class="privacy-row" for="privacy-matches-toggle">
+                    <span>Only matched partners can message me</span>
+                    <input type="checkbox" id="privacy-matches-toggle" checked />
+                  </label>
+                  <label class="privacy-row" for="privacy-pause-toggle">
+                    <span>Pause my profile from Discover</span>
+                    <input type="checkbox" id="privacy-pause-toggle" />
+                  </label>
+                </div>
+                <p class="privacy-status" id="privacy-status">Privacy settings are active for this demo.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="tab-bar" aria-label="Main views" id="tab-bar">
+          <button type="button" class="tab-bar__btn tab-bar__btn--active" id="tab-swipe-btn" data-tab="swipe" aria-current="page">
+            <span class="tab-bar__icon" aria-hidden="true">◎</span>
+            Discover
+          </button>
+          <button type="button" class="tab-bar__btn" id="tab-messages-btn" data-tab="messages">
+            <span class="tab-bar__icon" aria-hidden="true">💬</span>
+            Messages
+            <span class="tab-bar__badge" id="tab-badge" hidden>0</span>
+          </button>
+          <button type="button" class="tab-bar__btn" id="tab-profile-btn" data-tab="profile">
+            <span class="tab-bar__icon" aria-hidden="true">👤</span>
+            Profile
+          </button>
+        </nav>
+      </section>
+
+      <!-- Screen 5: Chat -->
+      <section class="screen" id="screen-chat" data-step="5" aria-labelledby="chat-heading" hidden>
+        <div class="screen__content screen__content--chat">
+          <h2 id="chat-heading" class="visually-hidden">Accountability chat</h2>
+          <div class="chat-topbar card card--compact">
+            <button type="button" class="btn-back" id="btn-chat-back" aria-label="Back to Messages">←</button>
+              <div class="chat-header chat-header--inline">
+              <div class="chat-header__avatar" id="chat-partner-initials">JM</div>
+              <div class="chat-header__info">
+                <p class="chat-header__name" id="chat-partner-name">Jordan M.</p>
+                <p class="chat-header__distance" id="chat-partner-distance">— mi away</p>
+                <p class="chat-header__status"><span class="status-dot" aria-hidden="true"></span> Here to cheer you on</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-log card" id="chat-log" role="log" aria-live="polite" aria-relevant="additions">
+            <!-- Messages injected / static starters -->
+          </div>
+
+          <div class="chat-compose card card--compact">
+            <label for="chat-input" class="visually-hidden">Message your partner</label>
+            <input
+              type="text"
+              id="chat-input"
+              class="chat-compose__input"
+              placeholder="Message your partner…"
+              maxlength="500"
+              autocomplete="off"
+            />
+            <button type="button" class="btn btn--primary chat-compose__send" id="btn-chat-send">Send</button>
+          </div>
+
+          <div class="next-workout card" id="next-workout-card">
+            <p class="next-workout__label">Next check-in</p>
+            <p class="next-workout__title" id="next-workout-text">Light 25-minute walk or stretch · Tomorrow 7:30 AM</p>
+            <p class="next-workout__hint">Small plans count. We can adjust if life gets busy.</p>
+          </div>
+
+          <p class="quick-actions-label">Quick replies</p>
+          <div class="quick-actions">
+            <button type="button" class="btn btn--ghost" id="btn-worked-out">I worked out</button>
+            <button type="button" class="btn btn--ghost" id="btn-motivation">Need motivation</button>
+            <button type="button" class="btn btn--ghost" id="btn-reschedule">Reschedule</button>
+          </div>
+
+          <div class="safety-actions card card--compact">
+            <p class="safety-actions__title">Safety tools</p>
+            <div class="safety-actions__buttons">
+              <button type="button" class="btn btn--ghost btn--small" id="btn-report-user">Report</button>
+              <button type="button" class="btn btn--secondary btn--small" id="btn-block-user">Block</button>
+            </div>
+            <p class="safety-feedback" id="safety-feedback" aria-live="polite"></p>
+          </div>
+
+          <div class="chat-footer-nav">
+            <button type="button" class="btn btn--secondary btn--small" id="btn-to-progress">See our progress</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen 6: Progress -->
+      <section class="screen" id="screen-progress" data-step="6" aria-labelledby="progress-heading" hidden>
+        <div class="screen__content">
+          <h2 id="progress-heading" class="screen-title">Your week together</h2>
+          <p class="screen-lead">
+            Progress is personal. These numbers celebrate showing up—not perfection.
+          </p>
+
+          <div class="stats-grid">
+            <div class="stat-card card">
+              <p class="stat-card__label">Weekly streak</p>
+              <p class="stat-card__value" id="stat-streak">3 days</p>
+              <p class="stat-card__hint">Nice rhythm—keep it gentle.</p>
+            </div>
+            <div class="stat-card card">
+              <p class="stat-card__label">Workouts this week</p>
+              <p class="stat-card__value" id="stat-workouts">2 / 4</p>
+              <p class="stat-card__hint">Goal: four short sessions you both agreed on.</p>
+            </div>
+            <div class="stat-card card stat-card--wide">
+              <p class="stat-card__label">Shared accountability score</p>
+              <p class="stat-card__value" id="stat-score">82%</p>
+              <p class="stat-card__hint">Based on check-ins and replies (demo).</p>
+            </div>
+          </div>
+
+          <div class="card summary-card">
+            <p class="summary-card__title">Summary</p>
+            <p class="summary-card__text" id="progress-summary">
+              You and your partner are building a habit of checking in. That matters more than any single workout.
+            </p>
+          </div>
+
+          <p class="encouragement" id="encouragement-msg">
+            You do not have to be “good at this” yet. You only have to keep going—in small steps.
+          </p>
+
+          <div class="btn-row btn-row--stack">
+            <button type="button" class="btn btn--primary" id="btn-back-chat">Back to chat</button>
+            <button type="button" class="btn btn--secondary" id="btn-restart">Start over</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
